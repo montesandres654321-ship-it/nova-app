@@ -12,7 +12,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final String backendUrl = "http://172.17.8.124:3000";
+  final String backendUrl = "http://172.30.22.4:3000";
 
   final _formKey = GlobalKey<FormState>();
 

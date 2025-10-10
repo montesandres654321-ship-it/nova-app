@@ -1,4 +1,4 @@
-// lib/pages/profile_page.dart - VERSIÓN CORREGIDA
+// lib/pages/profile_page.dart - VERSIÓN COMPLETAMENTE CORREGIDA
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,7 +25,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int? userId;
   bool _isGoogleUser = false;
 
-  final String backendUrl = "http://172.17.8.124:3000";
+  final String backendUrl = "http://172.30.22.4:3000";
 
   @override
   void initState() {
@@ -78,7 +78,7 @@ class _ProfilePageState extends State<ProfilePage> {
           "last_name": _lastNameCtrl.text.trim(),
           "username": _usernameCtrl.text.trim(),
           "email": _emailCtrl.text.trim(),
-          "phone": _isGoogleUser ? "" : _phoneCtrl.text.trim(), // ✅ Solo enviar teléfono si no es Google
+          "phone": _isGoogleUser ? "" : _phoneCtrl.text.trim(),
         }),
       ).timeout(const Duration(seconds: 10));
 
@@ -93,6 +93,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user', jsonEncode(updatedUser));
+
+        // ✅ ACTUALIZAR TAMBIÉN LOS DATOS INDIVIDUALES
+        await prefs.setString('first_name', updatedUser["first_name"] ?? "");
+        await prefs.setString('email', updatedUser["email"] ?? "");
 
         setState(() {
           _editing = false;

@@ -21,7 +21,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _obscureConfirm = true;
   bool _loading = false;
 
-  final String backendUrl = "http://172.17.8.124:3000"; // ✅ MISMA IP
+  final String backendUrl = "http://172.30.22.4:3000"; // ✅ MISMA IP
 
   Future<void> _updatePassword() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;

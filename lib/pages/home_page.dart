@@ -1,9 +1,10 @@
+// lib/pages/home_page.dart - VERSIÓN COMPLETAMENTE CORREGIDA
 import 'package:flutter/material.dart';
 import 'scan_record.dart';
 import 'api_service.dart';
 import 'google_auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'history_page.dart'; // ✅ AGREGAR ESTE IMPORT
+import 'history_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,11 +16,30 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   ScanRecord? _lastScan;
   bool _loading = true;
+  String _userName = '';
+  String _userEmail = '';
 
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     _loadLastScan();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userName = prefs.getString('username') ?? 'Usuario';
+      final firstName = prefs.getString('first_name') ?? '';
+      final email = prefs.getString('email') ?? '';
+
+      setState(() {
+        _userName = firstName.isNotEmpty ? firstName : userName;
+        _userEmail = email;
+      });
+    } catch (e) {
+      print('❌ Error cargando datos de usuario: $e');
+    }
   }
 
   Future<void> _loadLastScan() async {
@@ -30,7 +50,7 @@ class _HomePageState extends State<HomePage> {
         setState(() => _lastScan = scans.first);
       }
     } catch (e) {
-      // Error silenciado para producción
+      print('❌ Error cargando último escaneo: $e');
     } finally {
       setState(() => _loading = false);
     }
@@ -62,7 +82,6 @@ class _HomePageState extends State<HomePage> {
     const Color tealStart = Color(0xFF06B6A4);
     const Color tealEnd = Color(0xFF0EA5E9);
 
-    final theme = Theme.of(context);
     final screenWidth = MediaQuery.of(context).size.width;
     final maxWidth = screenWidth * 0.94;
 
@@ -84,47 +103,62 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Encabezado
+                    // ✅ CORREGIDO: Encabezado mejorado
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Inicio',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Hola, $_userName!',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _userEmail.isNotEmpty ? _userEmail : 'Bienvenido a Nova App',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                         IconButton(
                           onPressed: _logout,
-                          icon: const Icon(Icons.exit_to_app, color: Colors.white),
+                          icon: const Icon(Icons.exit_to_app, color: Colors.white, size: 28),
                           tooltip: 'Cerrar sesión',
                         )
                       ],
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 32),
 
-                    // Escanear
+                    // Botones principales
                     _menuButton(
                       context,
-                      label: 'Escanear',
-                      icon: Icons.qr_code,
+                      label: 'Escanear QR',
+                      icon: Icons.qr_code_scanner,
                       route: '/scan',
                     ),
                     const SizedBox(height: 16),
 
-                    // Pasaporte
                     _menuButton(
                       context,
-                      label: 'Pasaporte',
+                      label: 'Mi Pasaporte',
                       icon: Icons.card_travel,
                       route: '/passport',
                     ),
                     const SizedBox(height: 16),
 
-                    // Configuración
                     _menuButton(
                       context,
                       label: 'Configuración',
@@ -132,78 +166,126 @@ class _HomePageState extends State<HomePage> {
                       route: '/settings',
                     ),
 
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 32),
 
                     // Resumen rápido
                     Card(
                       clipBehavior: Clip.hardEdge,
                       elevation: 8,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: _loading
-                            ? const Center(child: CircularProgressIndicator())
-                            : Column(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Resumen rápido',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                            const Row(
+                              children: [
+                                Icon(Icons.history, color: Color(0xFF06B6A4)),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Tu Actividad',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            _lastScan != null
+                            const SizedBox(height: 16),
+
+                            _loading
+                                ? const Center(child: CircularProgressIndicator())
+                                : _lastScan != null
                                 ? Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
+                                const Text(
                                   "Último escaneo:",
-                                  style: theme.textTheme.bodyMedium,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _lastScan!.local,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF06B6A4),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
                                 Text(
                                   _lastScan!.place,
                                   style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600),
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
                                 ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  "Hace: ${_timeAgo(_lastScan!.time)}",
-                                  style: theme.textTheme.bodySmall,
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.access_time, size: 14, color: Colors.grey),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      "Hace: ${_timeAgo(_lastScan!.time)}",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             )
-                                : Text(
-                              'Aún no tienes escaneos registrados.',
-                              style: theme.textTheme.bodyMedium,
+                                : const Column(
+                              children: [
+                                Icon(Icons.qr_code, size: 40, color: Colors.grey),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Aún no tienes escaneos',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 24),
 
-                    // ✅ CORREGIDO: Navegación funcional a HistoryPage
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const HistoryPage()),
-                        ).then((_) => _loadLastScan());
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: Text(
-                          'Ver actividad completa',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
+                    // Botón ver historial completo
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const HistoryPage()),
+                          ).then((_) => _loadLastScan());
+                        },
+                        icon: const Icon(Icons.history),
+                        label: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            'Ver Historial Completo',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF06B6A4),
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
@@ -220,25 +302,27 @@ class _HomePageState extends State<HomePage> {
 
   Widget _menuButton(BuildContext context,
       {required String label, required IconData icon, required String route}) {
-    final theme = Theme.of(context);
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton.icon(
         onPressed: () => Navigator.pushNamed(context, route),
         icon: Padding(
           padding: const EdgeInsets.only(right: 8.0),
-          child: Icon(icon, size: 20),
+          child: Icon(icon, size: 24),
         ),
         label: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Text(label, style: const TextStyle(fontSize: 16)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.white,
-          foregroundColor: theme.colorScheme.secondary,
+          foregroundColor: const Color(0xFF06B6A4),
           elevation: 6,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -247,9 +331,10 @@ class _HomePageState extends State<HomePage> {
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inSeconds < 60) return '${diff.inSeconds}s';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    return '${diff.inDays}d';
+    if (diff.inSeconds < 60) return '${diff.inSeconds} segundos';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} minutos';
+    if (diff.inHours < 24) return '${diff.inHours} horas';
+    if (diff.inDays < 30) return '${diff.inDays} días';
+    return '${(diff.inDays / 30).floor()} meses';
   }
 }

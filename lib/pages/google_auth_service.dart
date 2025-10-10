@@ -1,3 +1,4 @@
+// lib/services/google_auth_service.dart - VERSIÓN COMPLETAMENTE CORREGIDA
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -5,14 +6,13 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GoogleAuthService {
-  // ✅ SIN clientId para desarrollo
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
   );
 
-  static final String backendUrl = "http://172.17.8.124:3000";
+  static final String backendUrl = "http://172.30.22.4:3000";
 
-  // Iniciar sesión con Google
+  // ✅ CORREGIDO: Login con Google mejorado
   static Future<Map<String, dynamic>?> signInWithGoogle() async {
     try {
       debugPrint('🔵 Iniciando autenticación con Google...');
@@ -30,21 +30,22 @@ class GoogleAuthService {
       debugPrint('📝 ID: ${googleUser.id}');
       debugPrint('👤 Nombre: ${googleUser.displayName}');
 
-      // Sincronizar con el backend
+      // ✅ CORREGIDO: Sincronizar con el backend
       final backendResult = await _syncWithBackend(googleUser);
 
       if (backendResult != null && backendResult['success'] == true) {
         final userData = backendResult['user'];
 
-        // Guardar en SharedPreferences
+        // ✅ CORREGIDO: Guardar datos completos en SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user', jsonEncode(userData));
         await prefs.setString('email', userData['email'] ?? '');
         await prefs.setString('username', userData['username'] ?? '');
+        await prefs.setString('first_name', userData['first_name'] ?? '');
         await prefs.setString('auth_provider', 'google');
         await prefs.setInt('userId', userData['id']);
 
-        debugPrint('✅ Login con Google exitoso');
+        debugPrint('✅ Login con Google exitoso - Datos guardados');
 
         return {
           'success': true,
@@ -54,6 +55,10 @@ class GoogleAuthService {
       } else {
         final errorMsg = backendResult?['error'] ?? 'Error al sincronizar con el servidor';
         debugPrint('🔴 Error en backend: $errorMsg');
+
+        // Cerrar sesión de Google si falla
+        await _googleSignIn.signOut();
+
         return {
           'success': false,
           'error': errorMsg
@@ -62,6 +67,10 @@ class GoogleAuthService {
 
     } catch (error) {
       debugPrint('🔴 Error crítico en Google SignIn: $error');
+
+      // Cerrar sesión de Google si hay error
+      await _googleSignIn.signOut();
+
       return {
         'success': false,
         'error': 'Error al iniciar sesión con Google: $error'
@@ -73,10 +82,9 @@ class GoogleAuthService {
     try {
       debugPrint('🌐 Enviando datos al backend...');
 
-      // ✅ ENVIAR AMBOS CAMPOS: google_uid Y uid (para compatibilidad)
       final Map<String, dynamic> requestData = {
-        "google_uid": googleUser.id,  // ✅ CORRECTO: lo que el backend espera
-        "uid": googleUser.id,         // ✅ MANTENER: por compatibilidad
+        "google_uid": googleUser.id,
+        "uid": googleUser.id,
         "email": googleUser.email,
         "name": googleUser.displayName,
         "photoUrl": googleUser.photoUrl,
@@ -91,7 +99,6 @@ class GoogleAuthService {
       );
 
       debugPrint('📥 Respuesta del backend: ${response.statusCode}');
-      debugPrint('📄 Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
@@ -102,8 +109,10 @@ class GoogleAuthService {
         final errorMsg = errorData['error'] ?? 'Error del servidor: ${response.statusCode}';
         debugPrint('🔴 Error del backend: $errorMsg');
 
-        // ✅ INTENTAR REGISTRO NORMAL SI FALLA GOOGLE AUTH
-        return await _tryNormalRegistration(googleUser);
+        return {
+          'success': false,
+          'error': errorMsg
+        };
       }
     } catch (e) {
       debugPrint('🔴 Error de conexión: $e');
@@ -114,71 +123,18 @@ class GoogleAuthService {
     }
   }
 
-  static Future<Map<String, dynamic>?> _tryNormalRegistration(GoogleSignInAccount googleUser) async {
-    try {
-      debugPrint('🔄 Intentando registro normal como fallback...');
-
-      // Generar username único
-      final baseUsername = googleUser.email?.split('@').first ?? 'user';
-      String finalUsername = '${baseUsername}_google';
-
-      // ✅ CORREGIDO: Manejo de null safety
-      final displayName = googleUser.displayName ?? 'Google User';
-      final nameParts = displayName.split(' ');
-      final firstName = nameParts.isNotEmpty ? nameParts[0] : 'Google';
-      final lastName = nameParts.length > 1 ? nameParts.sublist(1).join(' ') : 'User';
-
-      final response = await http.post(
-        Uri.parse("$backendUrl/users/register"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "firstName": firstName,
-          "lastName": lastName,
-          "username": finalUsername,
-          "email": googleUser.email,
-          "password": "google_auth_${DateTime.now().millisecondsSinceEpoch}",
-          "accepted_terms": 1,
-        }),
-      );
-
-      debugPrint('📥 Respuesta registro normal: ${response.statusCode}');
-      debugPrint('📄 Body registro: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        debugPrint('✅ Registro normal exitoso como fallback');
-        return result;
-      } else {
-        final errorData = jsonDecode(response.body);
-        final errorMsg = errorData['error'] ?? 'Error en registro normal: ${response.statusCode}';
-        debugPrint('🔴 Error en registro normal: $errorMsg');
-        return {
-          'success': false,
-          'error': errorMsg
-        };
-      }
-    } catch (e) {
-      debugPrint('🔴 Error en registro alternativo: $e');
-      return {
-        'success': false,
-        'error': 'Error en registro alternativo: $e'
-      };
-    }
-  }
-
-  // Cerrar sesión
+  // ✅ CORREGIDO: Cerrar sesión mejorado
   static Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('user');
-      await prefs.remove('auth_provider');
-      await prefs.remove('userId');
-      await prefs.remove('email');
-      await prefs.remove('username');
-      debugPrint('✅ Sesión de Google cerrada');
+      await prefs.clear(); // Limpiar TODO
+      debugPrint('✅ Sesión de Google cerrada y datos limpiados');
     } catch (error) {
       debugPrint('🔴 Error al cerrar sesión: $error');
+      // Forzar limpieza incluso si hay error
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
     }
   }
 

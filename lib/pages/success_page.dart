@@ -18,7 +18,7 @@ class SuccessPage extends StatefulWidget {
 
 class _SuccessPageState extends State<SuccessPage> {
   late Timer _timer;
-  int _secondsRemaining = 20;
+  int _secondsRemaining = 10;
 
   @override
   void initState() {
@@ -127,7 +127,7 @@ class _SuccessPageState extends State<SuccessPage> {
             SizedBox(
               width: 200,
               child: LinearProgressIndicator(
-                value: (20 - _secondsRemaining) / 10,
+                value: (10 - _secondsRemaining) / 10,
                 backgroundColor: Colors.grey.shade300,
                 valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF06B6A4)),
                 minHeight: 6,
