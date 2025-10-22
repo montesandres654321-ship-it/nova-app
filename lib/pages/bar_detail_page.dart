@@ -1,22 +1,20 @@
-//bar_detail_page.dart
+// lib/pages/bar_detail_page.dart
 import 'package:flutter/material.dart';
 import 'scan_page.dart';
 
 class BarDetailPage extends StatelessWidget {
-  final String name;
-  final String image;
+  final Map<String, dynamic> bar;
 
   const BarDetailPage({
     super.key,
-    required this.name,
-    required this.image,
+    required this.bar,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(name),
+        title: Text(bar["name"]),
         backgroundColor: const Color(0xFF06B6A4),
       ),
       body: Container(
@@ -34,7 +32,7 @@ class BarDetailPage extends StatelessWidget {
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12)),
               child: Image.asset(
-                image,
+                bar["image"],
                 height: 200,
                 fit: BoxFit.cover,
               ),
@@ -44,26 +42,79 @@ class BarDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontSize: 22, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 12),
-                  const Text(
-                    "Descripción del bar. Aquí irá información detallada, ubicación, ambiente y contacto.",
-                    style: TextStyle(fontSize: 16),
+                  Text(
+                    bar["name"],
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        bar["location"],
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: Colors.amber, size: 20),
+                      Text(" ${bar["rating"]}"),
+                      const Spacer(),
+                      Icon(Icons.access_time, size: 18, color: Colors.grey[600]),
+                      const SizedBox(width: 4),
+                      Text(
+                        bar["hours"],
+                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Descripción:",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    bar["description"],
+                    style: const TextStyle(fontSize: 16, height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    "Especialidad:",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    bar["specialty"],
+                    style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Text(
+                        "Precios: ",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        bar["priceRange"],
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
                   Center(
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
-                              builder: (_) => const ScanPage()),
+                          MaterialPageRoute(builder: (_) => const ScanPage()),
                         );
                       },
                       icon: const Icon(Icons.qr_code_scanner),
-                      label: const Text("Escanear QR"),
+                      label: const Text("Escanear QR del Bar"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF06B6A4),
                         foregroundColor: Colors.white,

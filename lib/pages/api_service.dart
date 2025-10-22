@@ -1,11 +1,13 @@
 // lib/services/api_service.dart - VERSIÓN CORREGIDA
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+
+// lib/pages/api_service.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'scan_record.dart';
 
 class ApiService {
-  static final String backendUrl = "http://172.30.22.4:3000";
+  static final String backendUrl = "http://172.20.10.2:3000";
 
   // ✅ CORREGIDO: Obtener historial con userId
   static Future<List<ScanRecord>> getScanHistory() async {

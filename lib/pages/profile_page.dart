@@ -1,4 +1,4 @@
-// lib/pages/profile_page.dart - VERSIÓN COMPLETAMENTE CORREGIDA
+// lib/pages/profile_page.dart -
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,7 +25,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int? userId;
   bool _isGoogleUser = false;
 
-  final String backendUrl = "http://172.30.22.4:3000";
+  final String backendUrl = "http://172.20.10.2:3000";
 
   @override
   void initState() {

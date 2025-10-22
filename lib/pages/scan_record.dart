@@ -1,4 +1,4 @@
-// lib/models/scan_record.dart - VERSIÓN CORREGIDA
+// lib/pages/scan_record.dart - VERSIÓN CORREGIDA
 class ScanRecord {
   final int id;
   final String place;

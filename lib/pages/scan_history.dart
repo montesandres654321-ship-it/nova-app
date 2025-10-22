@@ -1,3 +1,4 @@
+// lib/pages/scan_history.dart
 import 'package:flutter/material.dart';
 import 'scan_record.dart';
 import 'api_service.dart';

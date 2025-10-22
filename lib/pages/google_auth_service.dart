@@ -1,4 +1,4 @@
-// lib/services/google_auth_service.dart - VERSIÓN COMPLETAMENTE CORREGIDA
+// lib/services/google_auth_service.dart
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,7 +10,7 @@ class GoogleAuthService {
     scopes: ['email', 'profile'],
   );
 
-  static final String backendUrl = "http://172.30.22.4:3000";
+  static final String backendUrl = "http://172.20.10.2:3000";
 
   // ✅ CORREGIDO: Login con Google mejorado
   static Future<Map<String, dynamic>?> signInWithGoogle() async {

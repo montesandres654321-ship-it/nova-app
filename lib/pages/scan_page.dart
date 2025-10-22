@@ -21,7 +21,7 @@ class _ScanPageState extends State<ScanPage> {
   double _zoom = 0.0;
   bool _isProcessing = false;
 
-  final String backendUrl = "http://172.30.22.4:3000"; // tu PC en red local
+  final String backendUrl = "http://172.20.10.2:3000"; // tu PC en red local
 
   @override
   void dispose() {

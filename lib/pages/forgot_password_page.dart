@@ -16,7 +16,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   bool _isLoading = false;
   bool _emailSent = false;
 
-  final String backendUrl = "http://172.30.22.4:3000";
+  final String backendUrl = "http://172.20.10.2:3000";
 
   Future<void> _sendRecoveryEmail() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
