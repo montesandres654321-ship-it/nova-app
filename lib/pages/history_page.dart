@@ -1,4 +1,4 @@
-// lib/pages/history_page.dart - VERSIÓN CORREGIDA
+// lib/pages/history_page.dart
 import 'package:flutter/material.dart';
 import 'scan_record.dart';
 import 'api_service.dart';

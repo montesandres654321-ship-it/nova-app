@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
-  Future<void> _openLink(String url) async { // ✅ REMOVIDO context del parámetro
+  Future<void> _openLink(String url) async {
     final uri = Uri.parse(url);
     try {
       if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {

@@ -1,6 +1,5 @@
-
 name: nova_app
-description: "A new Flutter project."
+description: "Nova App - Aplicación móvil para escaneo de QR"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -19,6 +18,11 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.2.3
   google_sign_in: ^6.1.1  # ✅ Google Sign-In
+
+  # 📦 PAQUETES ADICIONALES RECOMENDADOS (opcionales)
+  flutter_spinkit: ^5.2.0
+  cached_network_image: ^3.3.0
+  pull_to_refresh: ^2.0.0
 
 dev_dependencies:
   flutter_test:

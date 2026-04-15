@@ -1,4 +1,4 @@
-// lib/pages/forgot_password_page.dart - VERSIÓN COMPLETAMENTE MEJORADA
+// lib/pages/forgot_password_page.dart -
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -16,7 +16,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   bool _isLoading = false;
   bool _emailSent = false;
 
-  final String backendUrl = "http://172.20.10.2:3000";
+  final String backendUrl = "http://192.168.2.178:3000";
 
   Future<void> _sendRecoveryEmail() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;

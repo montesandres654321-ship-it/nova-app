@@ -25,7 +25,7 @@ class _ProfilePageState extends State<ProfilePage> {
   int? userId;
   bool _isGoogleUser = false;
 
-  final String backendUrl = "http://172.20.10.2:3000";
+  final String backendUrl = "http://192.168.2.168:3000";
 
   @override
   void initState() {

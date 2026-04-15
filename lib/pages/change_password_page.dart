@@ -1,4 +1,4 @@
-// lib/pages/change_password_page.dart - VERSIÓN CORREGIDA
+// lib/pages/change_password_page.dart -
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,7 +21,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   bool _obscureConfirm = true;
   bool _loading = false;
 
-  final String backendUrl = "http://172.30.22.4:3000"; // ✅ MISMA IP
+  final String backendUrl = "http://192.168.2.178:3000"; // ✅ MISMA IP
 
   Future<void> _updatePassword() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;

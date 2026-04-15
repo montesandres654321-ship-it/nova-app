@@ -10,7 +10,7 @@ class GoogleAuthService {
     scopes: ['email', 'profile'],
   );
 
-  static final String backendUrl = "http://172.20.10.2:3000";
+  static final String backendUrl = "http://192.168.2.178:3000";
 
   // ✅ CORREGIDO: Login con Google mejorado
   static Future<Map<String, dynamic>?> signInWithGoogle() async {

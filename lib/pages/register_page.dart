@@ -1,4 +1,4 @@
-// lib/pages/register_page.dart - VERSIÓN CORREGIDA
+// lib/pages/register_page.dart
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -12,7 +12,7 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  final String backendUrl = "http://172.20.10.2:3000";
+  final String backendUrl = "http://192.168.2.178:3000";
 
   final _formKey = GlobalKey<FormState>();
 

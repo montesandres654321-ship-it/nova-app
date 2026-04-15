@@ -1,67 +1,65 @@
-// lib/pages/restaurants_page.dart
+// lib/services/restaurants_page.dart
 import 'package:flutter/material.dart';
 import 'restaurant_detail_page.dart';
+import '../models/place_model.dart';
+import 'api_service.dart'; //
 
-class RestaurantsPage extends StatelessWidget {
+class RestaurantsPage extends StatefulWidget {
   const RestaurantsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> restaurants = [
-      {
-        "name": "Restaurante La Costa",
-        "image": "assets/images/restaurante_02.jpg",
-        "location": ", Coveñas ",
-        "description": "Restaurante especializado en mariscos frescos y comida costeña. Vista panorámica al mar Caribe con terraza al aire libre.",
-        "cuisine": "Mariscos y comida costeña",
-        "hours": "12:00 PM - 10:00 PM",
-        "rating": 4.5,
-        "priceRange": "Medio-Alto",
-        "specialties": ["Ceviche mixto", "Arroz de mariscos", "Pargo rojo frito"],
-        "features": ["Terraza", "Vista al mar", "Reservas"]
-      },
-      {
-        "name": "Restaurante Gourmet",
-        "image": "assets/images/restaurante_03.jpg",
-        "location": "Centro Histórico, tolu",
-        "description": "Cocina de autor con ingredientes locales. Menú degustación disponible con reserva previa. Ambiente elegante y sofisticado.",
-        "cuisine": "Fusión internacional",
-        "hours": "6:00 PM - 11:00 PM",
-        "rating": 4.8,
-        "priceRange": "Alto",
-        "specialties": ["Menú degustación", "Platos de autor", "Maridaje"],
-        "features": ["Elegante", "Cocina abierta", "Sommelier"]
-      },
-      {
-        "name": "Restaurante Mar y Tierra",
-        "image": "assets/images/restaurante_04.jpg",
-        "location": "Zona Gastronómica, san Bernardo",
-        "description": "Especialistas en carnes premium y pescados. Parrilla a la vista y ambiente rústico elegante. Perfecto para carnes a la parrilla.",
-        "cuisine": "Carnes y mariscos",
-        "hours": "12:00 PM - 11:00 PM",
-        "rating": 4.4,
-        "priceRange": "Medio",
-        "specialties": ["Parrillada mixta", "Corte Angus", "Pescado a la talla"],
-        "features": ["Parrilla", "Rústico", "Amplio"]
-      },
-      {
-        "name": "Restaurante El Sabor",
-        "image": "assets/images/restaurante_01.jpg",
-        "location": "Getsemaní, Coveñas ",
-        "description": "Comida típica colombiana en un ambiente familiar y acogedor. Platos generosos y auténticos que representan la gastronomía local.",
-        "cuisine": "Comida colombiana tradicional",
-        "hours": "11:00 AM - 9:00 PM",
-        "rating": 4.2,
-        "priceRange": "Económico-Medio",
-        "specialties": ["Bandeja paisa", "Sancocho de gallina", "Ajiaco santafereño"],
-        "features": ["Familiar", "Típico", "Económico"]
-      }
-    ];
+  State<RestaurantsPage> createState() => _RestaurantsPageState();
+}
 
+class _RestaurantsPageState extends State<RestaurantsPage> {
+  List<Place> restaurants = [];
+  bool _loading = true;
+  String _error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRestaurants();
+  }
+
+  Future<void> _loadRestaurants() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+
+    try {
+      final restaurantsList = await ApiService.getRestaurants(); // ✅ CORREGIDO: ApiService.getRestaurants()
+      setState(() => restaurants = restaurantsList);
+
+      if (restaurantsList.isEmpty) {
+        setState(() => _error = 'No hay restaurantes disponibles');
+      }
+    } catch (e) {
+      setState(() => _error = 'Error al cargar restaurantes: $e');
+      print('❌ Error en _loadRestaurants: $e');
+    } finally {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _refreshRestaurants() async {
+    await _loadRestaurants();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Restaurantes"),
         backgroundColor: const Color(0xFF06B6A4),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _refreshRestaurants,
+            tooltip: 'Actualizar',
+          ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -71,28 +69,62 @@ class RestaurantsPage extends StatelessWidget {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: ListView.builder(
-          itemCount: restaurants.length,
-          itemBuilder: (context, index) {
-            final restaurant = restaurants[index];
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RestaurantDetailPage(restaurant: restaurant),
-                  ),
-                );
-              },
-              child: _buildRestaurantCard(restaurant),
-            );
-          },
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _error.isNotEmpty
+            ? Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                _error,
+                style: const TextStyle(fontSize: 16, color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadRestaurants,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF06B6A4),
+                ),
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
+        )
+            : restaurants.isEmpty
+            ? const Center(
+          child: Text(
+            "No hay restaurantes disponibles",
+            style: TextStyle(fontSize: 16, color: Colors.white),
+          ),
+        )
+            : RefreshIndicator(
+          onRefresh: _refreshRestaurants,
+          child: ListView.builder(
+            itemCount: restaurants.length,
+            itemBuilder: (context, index) {
+              final restaurant = restaurants[index];
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RestaurantDetailPage(restaurant: restaurant),
+                    ),
+                  );
+                },
+                child: _buildRestaurantCard(restaurant),
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildRestaurantCard(Map<String, dynamic> restaurant) {
+  Widget _buildRestaurantCard(Place restaurant) {
     return Card(
       margin: const EdgeInsets.all(12),
       elevation: 6,
@@ -102,15 +134,27 @@ class RestaurantsPage extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Image.asset(
-              restaurant["image"],
+            child: Image.network(
+              restaurant.imageUrl ?? _getPlaceholderImage('restaurant'), // ✅ CORREGIDO: Método local
               height: 170,
               fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  height: 170,
+                  color: Colors.grey[300],
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF06B6A4)),
+                    ),
+                  ),
+                );
+              },
               errorBuilder: (context, error, stackTrace) {
                 return Container(
                   height: 170,
                   color: Colors.grey[300],
-                  child: Icon(Icons.restaurant, size: 50, color: Colors.grey[500]),
+                  child: const Icon(Icons.restaurant, size: 50, color: Colors.grey),
                 );
               },
             ),
@@ -121,54 +165,76 @@ class RestaurantsPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  restaurant["name"],
+                  restaurant.name,
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  restaurant["location"],
+                  restaurant.lugar,
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.star, color: Colors.amber, size: 16),
-                    Text(" ${restaurant["rating"]}"),
+                    const Icon(Icons.star, color: Colors.amber, size: 16),
+                    Text(" ${restaurant.rating}"),
                     const Spacer(),
                     Text(
-                      restaurant["priceRange"],
+                      restaurant.priceRange ?? 'Consultar',
                       style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  restaurant["cuisine"],
-                  style: TextStyle(fontSize: 14, color: Colors.grey[600], fontStyle: FontStyle.italic),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: (restaurant["features"] as List<String>).take(2).map((feature) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF06B6A4).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        feature,
-                        style: const TextStyle(fontSize: 10, color: Color(0xFF06B6A4)),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                if (restaurant.description != null && restaurant.description!.isNotEmpty) ...{
+                  Text(
+                    restaurant.description!.length > 100
+                        ? '${restaurant.description!.substring(0, 100)}...'
+                        : restaurant.description!,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600], fontStyle: FontStyle.italic),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                },
+                if (restaurant.amenities.isNotEmpty) ...{
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: restaurant.amenities.take(3).map((feature) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF06B6A4).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          feature,
+                          style: const TextStyle(fontSize: 10, color: Color(0xFF06B6A4)),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                },
               ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  // ✅ NUEVO: Método local para imágenes placeholder
+  String _getPlaceholderImage(String type) {
+    switch (type) {
+      case 'bar':
+        return "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=400&h=300&fit=crop";
+      case 'hotel':
+        return "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop";
+      case 'restaurant':
+        return "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop";
+      default:
+        return "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=300&fit=crop";
+    }
   }
 }
