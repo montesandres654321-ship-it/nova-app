@@ -11,7 +11,7 @@ class AppConstants {
   // BACKEND URL
   // ⚠️  Cambiar SOLO aquí cuando cambie la IP del servidor
   // ──────────────────────────────────────────────────────────
-  static const String backendUrl = 'http://172.17.8.226:3000';
+  static const String backendUrl = 'http://192.168.2.178:3000';
 
   // ──────────────────────────────────────────────────────────
   // SHARED PREFERENCES KEYS

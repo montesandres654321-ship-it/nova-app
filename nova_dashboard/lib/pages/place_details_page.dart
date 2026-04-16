@@ -1,6 +1,12 @@
 // lib/pages/place_details_page.dart
-// CORRECCIÓN: leading: const BackButton() explícito
-// Flutter Web no agrega ← automáticamente en todos los contextos
+// ============================================================
+// REDISEÑO: Layout 2 columnas — todo visible sin scroll
+// CAMBIOS:
+//   1. Imagen a la izquierda (fija, 360px ancho)
+//   2. Info + contacto + descripción + servicios + recompensa a la derecha (scroll propio)
+//   3. Sin imagen gigante de 250px arriba
+//   4. Compacto y profesional
+// ============================================================
 import 'package:flutter/material.dart';
 import '../models/place.dart';
 import 'places/form_page.dart';
@@ -9,14 +15,17 @@ class PlaceDetailsPage extends StatelessWidget {
   final Place place;
   const PlaceDetailsPage({super.key, required this.place});
 
+  static const _teal  = Color(0xFF06B6A4);
+  static const _amber = Color(0xFFD97706);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        // ← explícito para Flutter Web
         leading: const BackButton(color: Colors.white),
         title: Text(place.name),
-        backgroundColor: const Color(0xFF06B6A4),
+        backgroundColor: _teal,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -29,150 +38,189 @@ class PlaceDetailsPage extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // 🖼️ IMAGEN
-            if (place.imageUrl != null && place.imageUrl!.isNotEmpty)
-              Container(width: double.infinity, height: 250,
-                  decoration: BoxDecoration(
-                      image: DecorationImage(
-                          image: NetworkImage(place.imageUrl!), fit: BoxFit.cover)))
-            else
-              Container(width: double.infinity, height: 250,
-                  color: Colors.grey[300],
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    Icon(_iconForType(place.tipo), size: 80, color: Colors.grey[500]),
-                    const SizedBox(height: 8),
-                    Text('Sin imagen', style: TextStyle(color: Colors.grey[600])),
-                  ])),
-
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-                // ENCABEZADO
-                Row(children: [
-                  Text(place.typeEmoji, style: const TextStyle(fontSize: 32)),
-                  const SizedBox(width: 12),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(place.name,
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                    // tipoLabel devuelve "Restaurante" (español)
-                    Text(place.tipoLabel,
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                  ])),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                        color: place.isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20)),
-                    child: Text(place.isActive ? 'Activo' : 'Inactivo',
-                        style: TextStyle(fontSize: 12,
-                            color: place.isActive ? Colors.green : Colors.red,
-                            fontWeight: FontWeight.bold)),
+            // ── Columna izquierda: Imagen + Info básica ───
+            SizedBox(
+              width: 360,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Imagen
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: (place.imageUrl != null && place.imageUrl!.isNotEmpty)
+                        ? Image.network(
+                      place.imageUrl!,
+                      height: 200,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                    )
+                        : _imagePlaceholder(),
                   ),
-                ]),
+                  const SizedBox(height: 14),
 
-                const SizedBox(height: 24),
-
-                // CALIFICACIÓN
-                Row(children: [
-                  const Icon(Icons.star, color: Colors.amber, size: 24),
-                  const SizedBox(width: 8),
-                  Text(place.rating.toStringAsFixed(1),
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text(' / 5.0', style: TextStyle(fontSize: 16, color: Colors.grey[600])),
-                ]),
-
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 24),
-
-                // CONTACTO
-                _sectionTitle('Información de Contacto'),
-                const SizedBox(height: 16),
-                _infoRow(icon: Icons.location_on, label: 'Ubicación', value: place.lugar),
-                if (place.address != null && place.address!.isNotEmpty)
-                  _infoRow(icon: Icons.home, label: 'Dirección', value: place.address!),
-                if (place.phone != null && place.phone!.isNotEmpty)
-                  _infoRow(icon: Icons.phone, label: 'Teléfono', value: place.phone!),
-                if (place.priceRange != null && place.priceRange!.isNotEmpty)
-                  _infoRow(icon: Icons.attach_money, label: 'Rango de precios', value: place.priceRange!),
-
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 24),
-
-                // DESCRIPCIÓN
-                _sectionTitle('Descripción'),
-                const SizedBox(height: 12),
-                Text(place.description,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[800], height: 1.5)),
-
-                // SERVICIOS
-                if (place.amenities.isNotEmpty) ...[
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 24),
-                  _sectionTitle('Servicios'),
-                  const SizedBox(height: 12),
-                  Wrap(spacing: 8, runSpacing: 8,
-                      children: place.amenities.map((a) => Chip(
-                        label: Text(a),
-                        backgroundColor: const Color(0xFF06B6A4).withOpacity(0.1),
-                        labelStyle: const TextStyle(
-                            color: Color(0xFF06B6A4), fontWeight: FontWeight.w500),
-                      )).toList()),
-                ],
-
-                // RECOMPENSA
-                if (place.hasReward) ...[
-                  const SizedBox(height: 24),
-                  const Divider(),
-                  const SizedBox(height: 24),
-                  _sectionTitle('Recompensa'),
-                  const SizedBox(height: 12),
+                  // Info card
                   Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                          color: Colors.amber.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.amber, width: 2)),
-                      child: Row(children: [
-                        Text(place.rewardIcon ?? '🎁', style: const TextStyle(fontSize: 48)),
-                        const SizedBox(width: 16),
-                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(place.rewardName ?? 'Recompensa',
-                              style: const TextStyle(fontSize: 20,
-                                  fontWeight: FontWeight.bold, color: Colors.amber)),
-                          if (place.rewardDescription != null && place.rewardDescription!.isNotEmpty)
-                            Padding(padding: const EdgeInsets.only(top: 4),
-                                child: Text(place.rewardDescription!,
-                                    style: TextStyle(fontSize: 14, color: Colors.grey[700]))),
-                        ])),
-                      ])),
+                    padding: const EdgeInsets.all(16),
+                    decoration: _cardDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Nombre + Tipo
+                        Row(children: [
+                          Text(place.typeEmoji, style: const TextStyle(fontSize: 28)),
+                          const SizedBox(width: 10),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(place.name,
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                  maxLines: 2, overflow: TextOverflow.ellipsis),
+                              Text(place.tipoLabel,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                            ],
+                          )),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                                color: place.isActive ? Colors.green.withOpacity(0.08) : Colors.red.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(20)),
+                            child: Text(place.isActive ? 'Activo' : 'Inactivo',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                                    color: place.isActive ? Colors.green : Colors.red)),
+                          ),
+                        ]),
+                        const SizedBox(height: 12),
+
+                        // Rating
+                        Row(children: [
+                          const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                          const SizedBox(width: 4),
+                          Text(place.rating.toStringAsFixed(1),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(' / 5.0', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        ]),
+                        const SizedBox(height: 12),
+
+                        // Contacto compacto
+                        _infoChip(Icons.location_on_rounded, place.lugar),
+                        if (place.address != null && place.address!.isNotEmpty)
+                          _infoChip(Icons.home_rounded, place.address!),
+                        if (place.phone != null && place.phone!.isNotEmpty)
+                          _infoChip(Icons.phone_rounded, place.phone!),
+                        if (place.priceRange != null && place.priceRange!.isNotEmpty)
+                          _infoChip(Icons.attach_money_rounded, place.priceRange!),
+
+                        // Sistema
+                        const SizedBox(height: 8),
+                        Text('ID: ${place.id}',
+                            style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+                        if (place.createdAt != null)
+                          Text('Creado: ${_fmt(place.createdAt!)}',
+                              style: TextStyle(fontSize: 10, color: Colors.grey[400])),
+                      ],
+                    ),
+                  ),
                 ],
+              ),
+            ),
+            const SizedBox(width: 20),
 
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 24),
+            // ── Columna derecha: Descripción + Servicios + Recompensa ──
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Descripción
+                    _sectionCard('Descripción', [
+                      Text(place.description,
+                          style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.6)),
+                    ]),
+                    const SizedBox(height: 14),
 
-                // SISTEMA
-                _sectionTitle('Información del Sistema'),
-                const SizedBox(height: 12),
-                if (place.createdAt != null)
-                  _infoRow(icon: Icons.calendar_today, label: 'Fecha de creación',
-                      value: _fmt(place.createdAt!)),
-                if (place.updatedAt != null)
-                  _infoRow(icon: Icons.update, label: 'Última actualización',
-                      value: _fmt(place.updatedAt!)),
-                _infoRow(icon: Icons.tag, label: 'ID', value: place.id.toString()),
+                    // Servicios
+                    if (place.amenities.isNotEmpty) ...[
+                      _sectionCard('Servicios', [
+                        Wrap(spacing: 6, runSpacing: 6,
+                            children: place.amenities.map((a) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                  color: _teal.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(20)),
+                              child: Text(a, style: const TextStyle(
+                                  fontSize: 12, color: _teal, fontWeight: FontWeight.w500)),
+                            )).toList()),
+                      ]),
+                      const SizedBox(height: 14),
+                    ],
 
-                const SizedBox(height: 40),
-              ]),
+                    // Recompensa
+                    if (place.hasReward)
+                      _sectionCard('Recompensa', [
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                              color: _amber.withOpacity(0.06),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: _amber.withOpacity(0.2))),
+                          child: Row(children: [
+                            Text(place.rewardIcon ?? '🎁', style: const TextStyle(fontSize: 36)),
+                            const SizedBox(width: 14),
+                            Expanded(child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(place.rewardName ?? 'Recompensa',
+                                    style: TextStyle(fontSize: 15,
+                                        fontWeight: FontWeight.bold, color: _amber)),
+                                if (place.rewardDescription != null && place.rewardDescription!.isNotEmpty)
+                                  Padding(padding: const EdgeInsets.only(top: 3),
+                                      child: Text(place.rewardDescription!,
+                                          style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
+                                if (place.rewardStock != null)
+                                  Padding(padding: const EdgeInsets.only(top: 4),
+                                      child: Text('Stock: ${place.rewardStock} disponibles',
+                                          style: TextStyle(fontSize: 11, color: _amber,
+                                              fontWeight: FontWeight.w500))),
+                              ],
+                            )),
+                          ]),
+                        ),
+                      ]),
+
+                    // Propietario
+                    if (place.hasOwner) ...[
+                      const SizedBox(height: 14),
+                      _sectionCard('Propietario', [
+                        Row(children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: _teal.withOpacity(0.1),
+                            child: Text(place.ownerInitials,
+                                style: const TextStyle(
+                                    color: _teal, fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(place.ownerDisplay,
+                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              if (place.ownerEmail != null)
+                                Text(place.ownerEmail!,
+                                    style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                            ],
+                          )),
+                        ]),
+                      ]),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -180,22 +228,61 @@ class PlaceDetailsPage extends StatelessWidget {
     );
   }
 
-  Widget _sectionTitle(String title) => Text(title,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold,
-          color: Color(0xFF06B6A4)));
+  Widget _sectionCard(String title, List<Widget> children) {
+    return Container(
+      width: double.infinity,
+      decoration: _cardDecoration(),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(
+              border: Border(left: BorderSide(color: _teal, width: 4)),
+              borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(12), topRight: Radius.circular(12))),
+          child: Text(title,
+              style: const TextStyle(
+                  fontSize: 14, fontWeight: FontWeight.bold, color: _teal)),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: children),
+        ),
+      ]),
+    );
+  }
 
-  Widget _infoRow({required IconData icon, required String label, required String value}) =>
-      Padding(padding: const EdgeInsets.only(bottom: 12),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, color: Colors.grey[600], size: 20),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600],
-                  fontWeight: FontWeight.w500)),
-              const SizedBox(height: 2),
-              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-            ])),
-          ]));
+  Widget _infoChip(IconData icon, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(children: [
+        Icon(icon, size: 15, color: Colors.grey[500]),
+        const SizedBox(width: 8),
+        Expanded(child: Text(text,
+            style: TextStyle(fontSize: 12, color: Colors.grey[700]))),
+      ]),
+    );
+  }
+
+  BoxDecoration _cardDecoration() => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    boxShadow: [BoxShadow(
+        color: Colors.grey.withOpacity(0.08), blurRadius: 8)],
+  );
+
+  Widget _imagePlaceholder() => Container(
+    height: 200,
+    decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(12)),
+    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+      Icon(_iconForType(place.tipo), size: 60, color: Colors.grey[400]),
+      const SizedBox(height: 8),
+      Text('Sin imagen', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+    ]),
+  );
 
   IconData _iconForType(String tipo) {
     switch (tipo.toLowerCase()) {

@@ -1,8 +1,12 @@
 // lib/pages/profile/profile_page.dart
-// CAMBIO: _saveChanges() usa AdminService.updateMyProfile() en vez de updateUser()
-// updateMyProfile() llama PATCH /users/me/profile que acepta cualquier rol
-// (updateUser() llamaba PATCH /admin/users/:id que solo acepta admin_general)
-
+// ============================================================
+// REDISEÑO: Layout compacto — todo visible sin scroll
+// CAMBIOS:
+//   1. Avatar radius 36 (antes 60)
+//   2. Layout 2 columnas: perfil izquierda, seguridad derecha
+//   3. Campos más compactos con padding reducido
+//   4. Todo en pantalla sin scroll
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/constants.dart';
@@ -16,6 +20,8 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  static const _teal = Color(0xFF06B6A4);
+
   String _userName  = '';
   String _userEmail = '';
   String _userRole  = '';
@@ -69,7 +75,6 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // ← CORRECCIÓN: usa updateMyProfile() que acepta cualquier rol (user_place incluido)
   Future<void> _saveChanges() async {
     if (_userId == null) return;
     setState(() => _loading = true);
@@ -123,137 +128,256 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Mi Perfil'),
-          backgroundColor: Colors.teal,
-          foregroundColor: Colors.white,
-          actions: [
-            if (!_editing)
-              IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: () => setState(() => _editing = true))
-            else ...[
-              IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () { setState(() => _editing = false); _loadUserData(); }),
-              IconButton(
-                  icon: const Icon(Icons.check),
-                  onPressed: _saveChanges),
-            ],
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        title: const Text('Mi Perfil'),
+        backgroundColor: _teal,
+        foregroundColor: Colors.white,
+        actions: [
+          if (!_editing)
+            IconButton(
+                icon: const Icon(Icons.edit),
+                onPressed: () => setState(() => _editing = true))
+          else ...[
+            IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () { setState(() => _editing = false); _loadUserData(); }),
+            IconButton(
+                icon: const Icon(Icons.check),
+                onPressed: _saveChanges),
           ],
-        ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 800),
-                child: Column(children: [
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: _teal))
+          : Padding(
+        padding: const EdgeInsets.all(20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Columna izquierda: Avatar + Info Personal ──
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header con avatar compacto
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: _cardDecoration(),
+                        child: Row(children: [
+                          CircleAvatar(
+                            radius: 36,
+                            backgroundColor: _teal,
+                            child: Text(
+                                _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
+                                style: const TextStyle(
+                                    fontSize: 28, color: Colors.white,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(_userName,
+                                  style: const TextStyle(
+                                      fontSize: 20, fontWeight: FontWeight.bold),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 2),
+                              Text(_userEmail,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                    color: _teal.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(20)),
+                                child: Text(
+                                    '${AppConstants.getRoleEmoji(_userRole)} ${AppConstants.getRoleLabel(_userRole)}',
+                                    style: const TextStyle(
+                                        fontSize: 12, fontWeight: FontWeight.w600,
+                                        color: _teal)),
+                              ),
+                            ],
+                          )),
+                        ]),
+                      ),
+                      const SizedBox(height: 16),
 
-                  // Avatar
-                  CircleAvatar(radius: 60, backgroundColor: Colors.teal,
-                      child: Text(
-                          _userName.isNotEmpty ? _userName[0].toUpperCase() : 'U',
-                          style: const TextStyle(
-                              fontSize: 48, color: Colors.white,
-                              fontWeight: FontWeight.bold))),
-                  const SizedBox(height: 16),
-                  Text(_userName,
-                      style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold)),
-                  Text(_userEmail,
-                      style: TextStyle(fontSize: 14, color: Colors.grey[600])),
-                  const SizedBox(height: 8),
-                  Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: Colors.teal.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(
-                          '${AppConstants.getRoleEmoji(_userRole)} ${AppConstants.getRoleLabel(_userRole)}',
-                          style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w600,
-                              color: Colors.teal))),
-                  const SizedBox(height: 32),
-
-                  // Información personal
-                  Card(child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
+                      // Formulario
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: _cardDecoration(),
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Información Personal',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 24),
-                            TextField(
-                                controller: _firstNameController,
-                                enabled: _editing,
-                                decoration: InputDecoration(
-                                    labelText: 'Nombre(s)',
-                                    prefixIcon: const Icon(Icons.person),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12)),
-                                    filled: !_editing,
-                                    fillColor: !_editing ? Colors.grey[100] : null)),
+                            Row(children: [
+                              Container(width: 4, height: 16,
+                                  decoration: BoxDecoration(
+                                      color: _teal, borderRadius: BorderRadius.circular(2))),
+                              const SizedBox(width: 8),
+                              const Text('Información Personal',
+                                  style: TextStyle(
+                                      fontSize: 15, fontWeight: FontWeight.bold)),
+                            ]),
                             const SizedBox(height: 16),
-                            TextField(
-                                controller: _lastNameController,
-                                enabled: _editing,
-                                decoration: InputDecoration(
-                                    labelText: 'Apellido(s)',
-                                    prefixIcon: const Icon(Icons.person_outline),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12)),
-                                    filled: !_editing,
-                                    fillColor: !_editing ? Colors.grey[100] : null)),
-                            const SizedBox(height: 16),
+                            // Nombre + Apellido en fila
+                            Row(children: [
+                              Expanded(child: _buildField(
+                                  'Nombre(s)', _firstNameController,
+                                  Icons.person_rounded)),
+                              const SizedBox(width: 12),
+                              Expanded(child: _buildField(
+                                  'Apellido(s)', _lastNameController,
+                                  Icons.person_outline_rounded)),
+                            ]),
+                            const SizedBox(height: 12),
+                            // Email (readonly)
                             TextField(
                                 controller: TextEditingController(text: _userEmail),
                                 enabled: false,
-                                decoration: InputDecoration(
-                                    labelText: 'Email',
-                                    prefixIcon: const Icon(Icons.email),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12)),
-                                    filled: true,
-                                    fillColor: Colors.grey[100])),
-                            const SizedBox(height: 16),
-                            TextField(
-                                controller: _phoneController,
-                                enabled: _editing,
-                                keyboardType: TextInputType.phone,
-                                decoration: InputDecoration(
-                                    labelText: 'Teléfono (opcional)',
-                                    prefixIcon: const Icon(Icons.phone),
-                                    border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12)),
-                                    filled: !_editing,
-                                    fillColor: !_editing ? Colors.grey[100] : null)),
-                          ]))),
-                  const SizedBox(height: 24),
+                                style: const TextStyle(fontSize: 13),
+                                decoration: _dec('Email', Icons.email_rounded)),
+                            const SizedBox(height: 12),
+                            // Teléfono
+                            _buildField(
+                                'Teléfono (opcional)', _phoneController,
+                                Icons.phone_rounded),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 20),
 
-                  // Seguridad
-                  Card(child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Seguridad',
-                                style: TextStyle(
-                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 16),
-                            ListTile(
-                                leading: const Icon(Icons.lock, color: Colors.teal),
-                                title: const Text('Cambiar Contraseña'),
-                                trailing: const Icon(
-                                    Icons.arrow_forward_ios, size: 16),
-                                onTap: _showChangePasswordDialog),
-                          ]))),
-                ]),
-              ),
-            )));
+                // ── Columna derecha: Seguridad ──────────────
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: _cardDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Container(width: 4, height: 16,
+                              decoration: BoxDecoration(
+                                  color: _teal, borderRadius: BorderRadius.circular(2))),
+                          const SizedBox(width: 8),
+                          const Text('Seguridad',
+                              style: TextStyle(
+                                  fontSize: 15, fontWeight: FontWeight.bold)),
+                        ]),
+                        const SizedBox(height: 20),
+                        // Cambiar contraseña
+                        InkWell(
+                          onTap: _showChangePasswordDialog,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: _teal.withOpacity(0.04),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: _teal.withOpacity(0.15)),
+                            ),
+                            child: Row(children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                    color: _teal.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(10)),
+                                child: const Icon(Icons.lock_rounded,
+                                    color: _teal, size: 22),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Cambiar Contraseña',
+                                      style: TextStyle(
+                                          fontSize: 14, fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 2),
+                                  Text('Actualiza tu contraseña de acceso',
+                                      style: TextStyle(
+                                          fontSize: 11, color: Colors.grey[600])),
+                                ],
+                              )),
+                              Icon(Icons.arrow_forward_ios_rounded,
+                                  size: 16, color: Colors.grey[400]),
+                            ]),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Info de sesión
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                              color: Colors.grey[50],
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey[200]!)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Sesión activa',
+                                  style: TextStyle(
+                                      fontSize: 12, fontWeight: FontWeight.w600,
+                                      color: Colors.grey[700])),
+                              const SizedBox(height: 6),
+                              Row(children: [
+                                Icon(Icons.check_circle_rounded,
+                                    size: 14, color: Colors.green[600]),
+                                const SizedBox(width: 6),
+                                Text('Conectado como ${AppConstants.getRoleLabel(_userRole)}',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                              ]),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
+
+  Widget _buildField(String label, TextEditingController controller, IconData icon) {
+    return TextField(
+      controller: controller,
+      enabled: _editing,
+      style: const TextStyle(fontSize: 13),
+      decoration: _dec(label, icon),
+    );
+  }
+
+  InputDecoration _dec(String label, IconData icon) => InputDecoration(
+    labelText: label,
+    prefixIcon: Icon(icon, size: 18),
+    isDense: true,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+    focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: _teal, width: 1.5)),
+    filled: !_editing,
+    fillColor: !_editing ? Colors.grey[100] : null,
+  );
+
+  BoxDecoration _cardDecoration() => BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(12),
+    boxShadow: [BoxShadow(
+        color: Colors.grey.withOpacity(0.08), blurRadius: 8)],
+  );
 }

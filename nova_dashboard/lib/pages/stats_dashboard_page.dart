@@ -1,10 +1,10 @@
 // lib/pages/stats_dashboard_page.dart
 // ============================================================
-// CAMBIOS vs versión anterior:
-//   1. _buildDistributionChart(): quitado SizedBox(height:180) del donut,
-//      ahora usa Expanded para llenar el espacio del contenedor padre
-//   2. Chips de tipo movidos fuera del contenedor del donut para no
-//      competir por espacio vertical
+// CAMBIOS:
+//   1. Dropdown de período agregado (7, 15, 30, 60, 90, Todo)
+//   2. Default = 0 (Todo el historial)
+//   3. Gráfica de escaneos usa el período seleccionado
+//   4. Donut sin SizedBox fijo — usa Expanded
 // ============================================================
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -38,6 +38,10 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
   bool   _loading = true;
   String _error   = '';
 
+  // Default: todo el historial (0)
+  int _selectedDays = 0;
+  final List<int> _daysOptions = [7, 15, 30, 60, 90, 0];
+
   int _totalUsers   = 0;
   int _totalPlaces  = 0;
   int _totalScans   = 0;
@@ -54,13 +58,16 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = ''; });
     try {
+      // Si _selectedDays == 0, pedir 3650 días (todo el historial)
+      final daysParam = _selectedDays == 0 ? 3650 : _selectedDays;
+
       final results = await Future.wait([
         AdminService.getDashboardStats(),
-        _analytics.getScansByDay(days: 180),
+        _analytics.getScansByDay(days: daysParam),
       ]);
 
       final data     = results[0] as Map<String, dynamic>;
-      final scans180 = results[1] as List<Map<String, dynamic>>;
+      final scansData = results[1] as List<Map<String, dynamic>>;
 
       if (!mounted) return;
       if (data['success'] == true) {
@@ -73,7 +80,7 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
           _totalRewards = stats['rewards'] as int? ?? 0;
           _placesByType = pbt is Map<String, dynamic> ? pbt : {};
           _topPlaces    = List<Map<String, dynamic>>.from(data['topPlaces'] ?? []);
-          _scansByDay   = scans180;
+          _scansByDay   = scansData;
           _loading      = false;
         });
       } else {
@@ -86,6 +93,10 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
 
   void _goTo(int index) => widget.onNavigate?.call(index);
 
+  String get _periodLabel => _selectedDays == 0
+      ? 'Todo el historial'
+      : 'Últimos $_selectedDays días';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -97,6 +108,21 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          // Dropdown de período
+          DropdownButton<int>(
+            value: _selectedDays,
+            dropdownColor: const Color(0xFF3730A3),
+            style: const TextStyle(color: Colors.white, fontSize: 13),
+            underline: const SizedBox(),
+            icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+            items: _daysOptions.map((d) => DropdownMenuItem(
+              value: d,
+              child: Text(d == 0 ? 'Todo el historial' : '$d días'),
+            )).toList(),
+            onChanged: (v) {
+              if (v != null) { setState(() => _selectedDays = v); _load(); }
+            },
+          ),
           IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
         ],
       ),
@@ -108,17 +134,12 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
     );
   }
 
-  // ── Layout principal sin scroll ───────────────────────
   Widget _buildLayout() {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(children: [
-
-        // ── Fila 1: 4 tarjetas ───────────────────────
         _buildCardsRow(),
         const SizedBox(height: 16),
-
-        // ── Fila 2: gráfica líneas + donut ───────────
         Expanded(
           flex: 5,
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -128,18 +149,14 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
           ]),
         ),
         const SizedBox(height: 16),
-
-        // ── Fila 3: ranking de lugares ────────────────
         Expanded(
           flex: 4,
           child: _buildRankingChart(),
         ),
-
       ]),
     );
   }
 
-  // ── 4 tarjetas compactas en fila ─────────────────────
   Widget _buildCardsRow() {
     return IntrinsicHeight(
       child: Row(children: [
@@ -200,7 +217,6 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
     );
   }
 
-  // ── GRÁFICA 1: Escaneos por día (180 días) ────────────
   Widget _buildScansByDayChart() {
     final chartData = _scansByDay.map((item) {
       final dateStr = item['date']?.toString() ?? '';
@@ -231,7 +247,7 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: const Color(0xFF3730A3).withOpacity(0.08),
                     borderRadius: BorderRadius.circular(20)),
-                child: Text('Últimos 6 meses',
+                child: Text(_periodLabel,
                     style: TextStyle(fontSize: 10, color: Colors.grey[600]))),
           ]),
           const SizedBox(height: 12),
@@ -245,8 +261,6 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
     );
   }
 
-  // ── GRÁFICA 2: Distribución por tipo (Donut) ─────────
-  // FIX: quitado SizedBox(height:180) — ahora Expanded llena el espacio
   Widget _buildDistributionChart() {
     final hotel = _placesByType['hotel']      as int? ?? 0;
     final rest  = _placesByType['restaurant'] as int? ?? 0;
@@ -260,7 +274,6 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // ── Header ────────────────────────────────────
           Row(children: [
             Container(width: 4, height: 20,
                 decoration: BoxDecoration(color: const Color(0xFF059669),
@@ -270,8 +283,6 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
                 fontWeight: FontWeight.bold)),
           ]),
           const SizedBox(height: 8),
-
-          // ── Donut — ocupa todo el espacio disponible ──
           Expanded(
             child: DonutChartWidget(
               title: '', subtitle: '',
@@ -284,10 +295,7 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
               showLegend: true,
             ),
           ),
-
           const SizedBox(height: 8),
-
-          // ── Chips clickeables — fuera del donut ───────
           Row(children: [
             _typeChip('🏨', hotel, const Color(0xFF2563EB), 'hotel'),
             const SizedBox(width: 4),
@@ -317,7 +325,6 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
     ));
   }
 
-  // ── GRÁFICA 3: Ranking (barras) ───────────────────────
   Widget _buildRankingChart() {
     if (_topPlaces.isEmpty) return const SizedBox();
     final chartData = _topPlaces.take(6).map((p) => {

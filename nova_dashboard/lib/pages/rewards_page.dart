@@ -1,12 +1,6 @@
 // lib/pages/rewards_page.dart
 // ============================================================
-// CAMBIOS vs versión anterior:
-//   1. Eliminada la tabla "Detalle de Recompensas" de esta página
-//      → movida a rewards_detail_page.dart
-//   2. Los stat cards (Total, Canjeadas, Pendientes) ahora navegan
-//      a RewardsDetailPage con el filtro correspondiente
-//   3. Layout más limpio: header + cards + gráfica línea + donut
-//   4. El donut se corrige automáticamente con el fix global
+// FIX: _selectedDays = 0 (Todo el historial) por defecto
 // ============================================================
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -31,9 +25,9 @@ class _RewardsPageState extends State<RewardsPage> {
 
   bool    _loading      = true;
   String? _error;
-  int     _selectedDays = 30;
+  // FIX: arranca en 0 = Todo el historial
+  int     _selectedDays = 0;
 
-  // 0 = sin límite (todo el historial)
   final List<int> _daysOptions = [7, 15, 30, 60, 90, 0];
 
   static const _teal   = Color(0xFF06B6A4);
@@ -69,7 +63,6 @@ class _RewardsPageState extends State<RewardsPage> {
     }
   }
 
-  // ── Navegar a la vista de detalle con filtro ───────────
   void _navigateToDetail(String filter) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -85,6 +78,10 @@ class _RewardsPageState extends State<RewardsPage> {
     if (total == 0) return '0%';
     return '${(redeemed / total * 100).toStringAsFixed(1)}%';
   }
+
+  String get _periodLabel => _selectedDays == 0
+      ? 'Todo el historial'
+      : 'Últimos $_selectedDays días';
 
   @override
   Widget build(BuildContext context) {
@@ -102,17 +99,11 @@ class _RewardsPageState extends State<RewardsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-
-        // ── Header ────────────────────────────────────────
         _buildHeader(),
-
-        // ── 4 Tarjetas clickeables ────────────────────────
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
           child: _buildStatsCards(),
         ),
-
-        // ── Gráficas: línea + donut — llenan el resto ────
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
@@ -130,7 +121,6 @@ class _RewardsPageState extends State<RewardsPage> {
     );
   }
 
-  // ── Header con título + período ────────────────────────
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
@@ -171,7 +161,6 @@ class _RewardsPageState extends State<RewardsPage> {
     );
   }
 
-  // ── 4 tarjetas — navegan a RewardsDetailPage ───────────
   Widget _buildStatsCards() {
     final total    = (_stats?['total_rewards']    as num?)?.toInt() ?? 0;
     final redeemed = (_stats?['redeemed_rewards'] as num?)?.toInt() ?? 0;
@@ -240,7 +229,6 @@ class _RewardsPageState extends State<RewardsPage> {
     );
   }
 
-  // ── Gráfica de líneas ──────────────────────────────────
   Widget _buildLineChart() {
     if (_rewardsByDay.isEmpty) {
       return _emptyChart('Sin actividad en este período');
@@ -256,7 +244,7 @@ class _RewardsPageState extends State<RewardsPage> {
 
     return LineChartWidget(
       title:    'Recompensas por Día',
-      subtitle: _selectedDays == 0 ? 'Todo el historial' : 'Últimos $_selectedDays días',
+      subtitle: _periodLabel,
       data:     chartData,
       color:    _teal,
       height:   double.infinity,
@@ -264,7 +252,6 @@ class _RewardsPageState extends State<RewardsPage> {
     );
   }
 
-  // ── Donut: Canjeadas vs Pendientes ─────────────────────
   Widget _buildDonutChart() {
     final redeemed = (_stats?['redeemed_rewards'] as num?)?.toInt() ?? 0;
     final pending  = (_stats?['pending_rewards']  as num?)?.toInt() ?? 0;
@@ -288,8 +275,7 @@ class _RewardsPageState extends State<RewardsPage> {
   Widget _emptyChart(String msg) => Container(
       decoration: BoxDecoration(
           color: Colors.white, borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(
-              color: Colors.grey.withOpacity(0.07), blurRadius: 8)]),
+          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.07), blurRadius: 8)]),
       child: Center(child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

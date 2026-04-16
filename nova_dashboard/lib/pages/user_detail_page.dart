@@ -1,12 +1,7 @@
 // lib/pages/user_detail_page.dart
 // ============================================================
-// REDISEÑO: Layout 2 columnas compacto
-// CAMBIOS:
-//   1. Header + Stats en columna izquierda (fijo, sin scroll)
-//   2. TopPlaces + Activity en columna derecha (scroll propio)
-//   3. Avatar reducido (radius 28), nombre fontSize 18
-//   4. Stats grid 2x2 compacto con padding reducido
-//   5. Todo visible sin scroll en pantallas >= 768px
+// FIX: Teléfono movido a fila separada debajo de badges
+// para que no se corte cuando el número es largo
 // ============================================================
 import 'package:flutter/material.dart';
 import '../services/admin_service.dart';
@@ -133,7 +128,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
     );
   }
 
-  // ── Header compacto ───────────────────────────────────
+  // ── Header compacto — teléfono en fila separada ───────
   Widget _buildCompactHeader() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -144,7 +139,7 @@ class _UserDetailPageState extends State<UserDetailPage> {
             color: Colors.grey.withOpacity(0.08), blurRadius: 8)],
       ),
       child: Column(children: [
-        // Avatar + Nombre + Email en fila
+        // Avatar + Nombre + Email
         Row(children: [
           CircleAvatar(
             radius: 28,
@@ -178,9 +173,8 @@ class _UserDetailPageState extends State<UserDetailPage> {
         ]),
         const SizedBox(height: 12),
 
-        // Rol + Estado + Teléfono en fila compacta
+        // Rol + Estado en una fila
         Row(children: [
-          // Rol
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -196,8 +190,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
             ]),
           ),
           const SizedBox(width: 8),
-
-          // Estado
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
@@ -220,18 +212,31 @@ class _UserDetailPageState extends State<UserDetailPage> {
               ),
             ]),
           ),
-
-          const Spacer(),
-
-          // Teléfono
-          if (_user!.phone != null)
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(Icons.phone, size: 13, color: Colors.grey[500]),
-              const SizedBox(width: 4),
-              Text(_user!.phone!,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-            ]),
         ]),
+
+        // FIX: Teléfono en fila separada — ya no se corta
+        if (_user!.phone != null && _user!.phone!.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
+            child: Row(children: [
+              Icon(Icons.phone_rounded, size: 14, color: Colors.grey[500]),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _user!.phone!,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                ),
+              ),
+            ]),
+          ),
+        ],
       ]),
     );
   }
@@ -401,7 +406,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
             ),
           )
         else ...[
-          // Últimos Escaneos
           if (_scans.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -422,8 +426,6 @@ class _UserDetailPageState extends State<UserDetailPage> {
               ),
             ))),
           ],
-
-          // Últimas Recompensas
           if (_rewards.isNotEmpty) ...[
             const Divider(height: 16),
             Padding(

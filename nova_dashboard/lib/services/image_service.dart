@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
 
 class ImageService {
-  static const String baseUrl = 'http://172.17.8.226:3000';
+  static const String baseUrl = 'http://192.168.2.178:3000';
 
   // ✅ Obtener token de autenticación
   static Future<String?> _getAuthToken() async {
