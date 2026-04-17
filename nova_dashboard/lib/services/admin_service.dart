@@ -1,11 +1,12 @@
 // lib/services/admin_service.dart
-// CORRECCIONES:
-//  1. getUsersWithDetails: lee raw['data'] no raw['users']
-//  2. getMyPlaceScans: ruta /places/my-place/scans
-//  3. updateUser: PATCH /admin/users/:id (antes PUT /users/update/:id)
-//  4. deactivateUser: DELETE /admin/users/:id — soft delete
-//  5. updateMyProfile: PATCH /users/me/profile — cualquier rol
-//  6. changePassword: POST /users/me/password (antes /users/change-password no existía)
+// ============================================================
+// CAMBIOS:
+//   1. getMyPlaceStats(placeId) — acepta placeId opcional
+//      Si se pasa, envía ?place_id=X al backend (para admin viendo otro)
+//   2. getMyPlaceScans(placeId) — idem
+//   3. getMyPlaceVisitors(placeId) — idem
+//   Todo lo demás sin cambios
+// ============================================================
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
@@ -166,9 +167,11 @@ class AdminService {
   }
 
   // ─── ESTADÍSTICAS MI LUGAR (user_place) ────────────────
-  static Future<Map<String, dynamic>> getMyPlaceStats() async {
+  // FIX: acepta placeId opcional — para que admin vea datos de otro propietario
+  static Future<Map<String, dynamic>> getMyPlaceStats({int? placeId}) async {
     try {
-      final r = await ApiClient.get<dynamic>('/places/my-place/stats');
+      final queryParam = placeId != null ? '?place_id=$placeId' : '';
+      final r = await ApiClient.get<dynamic>('/places/my-place/stats$queryParam');
       final d = r.data;
       if (d is! Map<String, dynamic>) throw ApiException('Formato inválido');
       final inner = d['data'] as Map<String, dynamic>? ?? d;
@@ -190,9 +193,11 @@ class AdminService {
     }
   }
 
-  static Future<Map<String, dynamic>> getMyPlaceScans() async {
+  // FIX: acepta placeId opcional
+  static Future<Map<String, dynamic>> getMyPlaceScans({int? placeId}) async {
     try {
-      final r = await ApiClient.get<dynamic>('/places/my-place/scans');
+      final queryParam = placeId != null ? '?place_id=$placeId' : '';
+      final r = await ApiClient.get<dynamic>('/places/my-place/scans$queryParam');
       final d = r.data;
       if (d is! Map<String, dynamic>) throw ApiException('Formato inválido');
       final list = d['data'] as List? ?? (r.data is List ? r.data as List : []);
@@ -203,9 +208,11 @@ class AdminService {
     }
   }
 
-  static Future<Map<String, dynamic>> getMyPlaceVisitors() async {
+  // FIX: acepta placeId opcional
+  static Future<Map<String, dynamic>> getMyPlaceVisitors({int? placeId}) async {
     try {
-      final r = await ApiClient.get<dynamic>('/places/my-place/visitors');
+      final queryParam = placeId != null ? '?place_id=$placeId' : '';
+      final r = await ApiClient.get<dynamic>('/places/my-place/visitors$queryParam');
       final d = r.data;
       if (d is! Map<String, dynamic>) throw ApiException('Formato inválido');
       final list = d['data'] as List? ?? [];
@@ -217,8 +224,6 @@ class AdminService {
   }
 
   // ─── PERFIL PROPIO (cualquier rol) ────────────────────
-  // PATCH /users/me/profile — funciona para admin_general, user_general y user_place
-  // El userId viene del token JWT — no puede editar a otro usuario
   static Future<Map<String, dynamic>> updateMyProfile({
     required String firstName,
     required String lastName,
@@ -239,7 +244,6 @@ class AdminService {
   }
 
   // ─── CONTRASEÑA PROPIA ─────────────────────────────────
-  // POST /users/me/password — cualquier rol autenticado
   static Future<Map<String, dynamic>> changePassword({
     required int    userId,
     required String oldPassword,
@@ -258,7 +262,6 @@ class AdminService {
   }
 
   // ─── EDITAR PERFIL DE OTRO USUARIO (solo admin_general) ──
-  // PATCH /admin/users/:id
   static Future<Map<String, dynamic>> updateUser({
     required int    userId,
     required String firstName,

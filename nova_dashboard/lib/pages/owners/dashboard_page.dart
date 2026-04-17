@@ -1,5 +1,11 @@
 // lib/pages/owners/dashboard_page.dart
-// Versión limpia — sin duplicados de imports, _userId ni PopupMenuButton
+// ============================================================
+// FIXES:
+//   #7 — Gráfica de visitas por día: fix parsing de fechas
+//         getMyPlaceScans devuelve 'data' no 'scans'
+//   #9 — Admin viendo dashboard de otro: pasa placeId como
+//         query param a getMyPlaceStats/Scans
+// ============================================================
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -44,7 +50,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
 
   bool   _loading  = true;
   String _error    = '';
-  int?   _userId;   // para ProfilePage y ChangePasswordDialog
+  int?   _userId;
   Place? _place;
   int    _visitors = 0;
   int    _scans    = 0;
@@ -73,28 +79,61 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     setState(() { _loading = true; _error = ''; });
     try {
       final place = await PlaceService.getPlaceById(widget.placeId!);
-      final stats = await AdminService.getMyPlaceStats();
+
+      // FIX #9: pasar placeId para que admin pueda ver datos de otro propietario
+      final stats = await AdminService.getMyPlaceStats(placeId: widget.placeId);
 
       List<Map<String, dynamic>> scans     = [];
       List<Map<String, dynamic>> scansByDay = [];
       try {
-        final r   = await AdminService.getMyPlaceScans();
+        // FIX #9: pasar placeId
+        final r = await AdminService.getMyPlaceScans(placeId: widget.placeId);
+
+        // FIX #7: el servicio devuelve 'scans' (key en el Map devuelto por admin_service)
         final raw = r['scans'] as List? ?? [];
         scans = raw.take(5).whereType<Map<String, dynamic>>().toList();
+
+        // FIX #7: agrupar por día con parsing robusto de fechas
         final Map<String, int> byDay = {};
         for (final s in raw.whereType<Map<String, dynamic>>()) {
           final dateStr = (s['created_at'] ?? '').toString();
+          if (dateStr.isEmpty) continue;
+
+          String? day;
+          // Intentar extraer fecha YYYY-MM-DD
           if (dateStr.length >= 10) {
-            final day = dateStr.substring(0, 10);
+            day = dateStr.substring(0, 10);
+            // Verificar que es una fecha válida
+            try {
+              DateTime.parse(day);
+            } catch (_) {
+              day = null;
+            }
+          }
+
+          // Si no se pudo parsear, intentar con el formato completo
+          if (day == null) {
+            try {
+              final parsed = DateTime.parse(dateStr);
+              day = DateFormat('yyyy-MM-dd').format(parsed);
+            } catch (_) {
+              continue; // Saltar este scan si no tiene fecha válida
+            }
+          }
+
+          if (day != null) {
             byDay[day] = (byDay[day] ?? 0) + 1;
           }
         }
+
         scansByDay = byDay.entries
             .map((e) => {'date': e.key, 'count': e.value})
             .toList()
           ..sort((a, b) =>
               (a['date'] as String).compareTo(b['date'] as String));
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('⚠️ Error cargando scans: $e');
+      }
 
       if (mounted) {
         setState(() {
@@ -127,8 +166,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
 
   Widget _buildContent() {
     return CustomScrollView(slivers: [
-
-      // ── SliverAppBar ──────────────────────────────────
       SliverAppBar(
         expandedHeight: 180,
         pinned: true,
@@ -139,9 +176,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
               if (Navigator.canPop(context)) Navigator.pop(context);
             }),
         actions: [
-          // Menú de usuario (Mi Perfil / Cambiar Contraseña / Cerrar Sesión)
           _buildUserMenu(),
-          // Botón editar lugar
           if (_place != null)
             IconButton(
                 icon: const Icon(Icons.edit_rounded, color: Colors.white),
@@ -151,7 +186,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                         builder: (_) => OwnerPlaceEditPage(
                             place:   _place!,
                             onSaved: _loadAll)))),
-          // Botón QR
           if (_place != null)
             IconButton(
                 icon: const Icon(Icons.qr_code_2_rounded, color: Colors.white),
@@ -201,7 +235,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           _buildStatsRow(),
           const SizedBox(height: 16),
 
-          // 2 gráficas lado a lado
           SizedBox(height: 200, child: Row(children: [
             Expanded(flex: 3, child: _buildLineChart()),
             const SizedBox(width: 12),
@@ -209,7 +242,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           ])),
           const SizedBox(height: 16),
 
-          // Recompensa + QR
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (_place?.hasReward == true)
               Expanded(child: _buildRewardCard()),
@@ -218,7 +250,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             Expanded(child: _buildQRCard()),
           ]),
 
-          // Últimos visitantes
           if (_recentScans.isNotEmpty) ...[
             const SizedBox(height: 16),
             _buildVisitors(),
@@ -230,7 +261,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     ]);
   }
 
-  // ── Menú de usuario — un solo PopupMenuButton ─────────
   Widget _buildUserMenu() {
     return PopupMenuButton<String>(
         offset: const Offset(0, 50),
@@ -300,7 +330,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         });
   }
 
-  // ── 4 tarjetas ────────────────────────────────────────
   Widget _buildStatsRow() {
     return Row(children: [
       _statCard('Visitantes', _visitors, Icons.people_rounded,          _teal),
@@ -337,7 +366,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
                 textAlign: TextAlign.center),
           ])));
 
-  // ── LineChart: visitas/día ────────────────────────────
+  // FIX #7: gráfica de líneas con datos reales
   Widget _buildLineChart() {
     if (_scansByDay.isEmpty) {
       return Container(
@@ -367,7 +396,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         height: double.infinity, fillArea: true);
   }
 
-  // ── DonutChart: otorgadas vs canjeadas ────────────────
   Widget _buildDonutChart() {
     final pending = _rewards - _redeemed;
     if (_rewards == 0) {
@@ -394,7 +422,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         height: double.infinity, showLegend: true);
   }
 
-  // ── Tarjeta Recompensa con botón Editar ───────────────
   Widget _buildRewardCard() {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -478,7 +505,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
           ])));
 
-  // ── QR Card compacto 60x60 ────────────────────────────
   Widget _buildQRCard() => Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -534,7 +560,6 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         ]),
       ]));
 
-  // ── Visitantes con "Ver todos" ────────────────────────
   Widget _buildVisitors() => Container(
       decoration: BoxDecoration(
         color: Colors.white, borderRadius: BorderRadius.circular(12),

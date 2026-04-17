@@ -1,4 +1,8 @@
 // lib/pages/admins/admin_detail_dialog.dart
+// ============================================================
+// FIX: Eliminada fila "Rating ⭐ 0.0/5" de la sección Lugar Asignado
+// Todo lo demás sin cambios
+// ============================================================
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/admin_stats_model.dart';
@@ -94,11 +98,11 @@ class AdminDetailDialog extends StatelessWidget {
                     ],
                     if (adminStats.hasPlace && adminStats.placeStats != null) ...[
                       const SizedBox(height: 16),
+                      // FIX: sin fila Rating
                       _buildSection('Lugar Asignado', [
                         _buildInfoRow('Nombre', adminStats.placeStats!.placeName),
                         _buildInfoRow('Tipo', adminStats.placeStats!.typeWithEmoji),
                         _buildInfoRow('Ubicación', adminStats.placeStats!.placeLocation),
-                        _buildInfoRow('Rating', '⭐ ${adminStats.placeStats!.ratingFormatted}/5'),
                       ]),
                       const SizedBox(height: 16),
                       _buildSection('Estadísticas', [

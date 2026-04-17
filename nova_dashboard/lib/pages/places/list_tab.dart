@@ -1,6 +1,8 @@
 // lib/pages/places/list_tab.dart
-// CORRECCIÓN: canViewInfo oculta botón ⓘ (info) para user_general
-// Secretaría solo ve QR — no puede ver detalle del lugar
+// ============================================================
+// FIX: Eliminado rating (estrella + número) de _buildPlaceCard
+// Todo lo demás sin cambios
+// ============================================================
 import 'package:flutter/material.dart';
 import '../../models/place.dart';
 import '../../services/place_service.dart';
@@ -11,7 +13,7 @@ import '../place_details_page.dart';
 class PlacesListTab extends StatefulWidget {
   final String? initialFilter;
   final bool    canEdit;
-  final bool    canViewInfo; // false = oculta botón ⓘ (secretaría)
+  final bool    canViewInfo;
 
   const PlacesListTab({
     super.key,
@@ -102,7 +104,6 @@ class _PlacesListTabState extends State<PlacesListTab> {
   @override
   Widget build(BuildContext context) {
     return Column(children: [
-      // ── FILTROS envueltos en Material ────────────────
       Material(
         color: Colors.transparent,
         child: Padding(
@@ -159,7 +160,6 @@ class _PlacesListTabState extends State<PlacesListTab> {
 
       const SizedBox(height: 8),
 
-      // ── LISTA ────────────────────────────────────────
       Expanded(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -196,6 +196,7 @@ class _PlacesListTabState extends State<PlacesListTab> {
     ]);
   }
 
+  // FIX: Eliminado rating (estrella + número)
   Widget _buildPlaceCard(Place place) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -218,14 +219,11 @@ class _PlacesListTabState extends State<PlacesListTab> {
             _buildActionButtons(place),
           ]),
           const SizedBox(height: 8),
+          // FIX: solo ubicación — sin estrella ni rating
           Row(children: [
             const Icon(Icons.location_on, size: 16, color: Colors.grey),
             const SizedBox(width: 4),
             Text(place.lugar, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(width: 16),
-            const Icon(Icons.star, size: 16, color: Colors.amber),
-            const SizedBox(width: 4),
-            Text('${place.rating}', style: const TextStyle(color: Colors.grey)),
           ]),
         ]),
       ),
@@ -234,23 +232,17 @@ class _PlacesListTabState extends State<PlacesListTab> {
 
   Widget _buildActionButtons(Place place) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-
-      // ⓘ Info — solo si canViewInfo (admin_general)
       if (widget.canViewInfo)
         IconButton(
             icon: const Icon(Icons.info_outline, size: 20),
             onPressed: () => Navigator.push(context,
                 MaterialPageRoute(builder: (_) => PlaceDetailsPage(place: place))),
             tooltip: 'Ver detalle'),
-
-      // QR — siempre visible (secretaría también puede descargar)
       IconButton(
           icon: const Icon(Icons.qr_code, size: 20),
           onPressed: () => _showQRDialog(place),
           tooltip: 'Ver QR',
           color: const Color(0xFF06B6A4)),
-
-      // Editar y Eliminar — solo si canEdit (admin_general)
       if (widget.canEdit) ...[
         IconButton(
             icon: const Icon(Icons.edit, size: 20),

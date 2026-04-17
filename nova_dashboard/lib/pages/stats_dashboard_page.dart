@@ -104,14 +104,14 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
       appBar: AppBar(
         title: const Text('Estadísticas Generales',
             style: TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFF3730A3),
+        backgroundColor: const Color(0xFF0891B2),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           // Dropdown de período
           DropdownButton<int>(
             value: _selectedDays,
-            dropdownColor: const Color(0xFF3730A3),
+            dropdownColor: const Color(0xFF0891B2),
             style: const TextStyle(color: Colors.white, fontSize: 13),
             underline: const SizedBox(),
             icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
@@ -238,14 +238,14 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Container(width: 4, height: 20,
-                decoration: BoxDecoration(color: const Color(0xFF3730A3),
+                decoration: BoxDecoration(color: const Color(0xFF0891B2),
                     borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 8),
             const Text('Actividad de Escaneos',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: const Color(0xFF3730A3).withOpacity(0.08),
+                decoration: BoxDecoration(color: const Color(0xFF0891B2).withOpacity(0.08),
                     borderRadius: BorderRadius.circular(20)),
                 child: Text(_periodLabel,
                     style: TextStyle(fontSize: 10, color: Colors.grey[600]))),
@@ -255,7 +255,7 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
               ? Center(child: Text('Sin datos', style: TextStyle(color: Colors.grey[400])))
               : LineChartWidget(
               title: '', data: chartData,
-              color: const Color(0xFF3730A3), fillArea: true, height: double.infinity)),
+              color: const Color(0xFF0891B2), fillArea: true, height: double.infinity)),
         ]),
       ),
     );

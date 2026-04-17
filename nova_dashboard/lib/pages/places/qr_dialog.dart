@@ -1,53 +1,117 @@
 // lib/pages/places/qr_dialog.dart
 // ============================================================
-// DIÁLOGO DE QR — Genera y descarga QR del lugar en PNG
-// Compatible con Flutter Web (usa dart:html para descarga)
+// MEJORAS:
+//   1. QR personalizado por tipo (colores diferentes para hotel/restaurant/bar)
+//   2. Descarga real al PC — usa fetch + blob en vez de abrir pestaña
+//   3. Diseño mejorado con colores del tipo de lugar
 // ============================================================
 
 import 'dart:convert';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:http/http.dart' as http;
 import '../../models/place.dart';
-import '../../utils/constants.dart';
 
 class QRDialog extends StatelessWidget {
   final Place place;
 
   const QRDialog({super.key, required this.place});
 
-  // ── Código QR del lugar ───────────────────────────────
   String get _qrData => 'PLACE:${place.id}';
 
-  // ── URL del QR usando la API de Google Charts ─────────
-  // Genera un QR como imagen PNG sin librerías externas
-  String get _qrImageUrl {
-    final encoded = Uri.encodeComponent(_qrData);
-    return 'https://api.qrserver.com/v1/create-qr-code/'
-        '?size=300x300&data=$encoded&format=png&margin=10';
+  // Colores por tipo de lugar
+  Color get _typeColor {
+    switch (place.tipo.toLowerCase()) {
+      case 'hotel':      return const Color(0xFF2563EB);
+      case 'restaurant': return const Color(0xFF059669);
+      case 'bar':        return const Color(0xFFD97706);
+      default:           return const Color(0xFF06B6A4);
+    }
   }
 
-  // ── Descargar QR como PNG ─────────────────────────────
+  Color get _typeLightColor {
+    switch (place.tipo.toLowerCase()) {
+      case 'hotel':      return const Color(0xFFDBEAFE);
+      case 'restaurant': return const Color(0xFFD1FAE5);
+      case 'bar':        return const Color(0xFFFEF3C7);
+      default:           return const Color(0xFFE0F7FA);
+    }
+  }
+
+  String get _typeIcon {
+    switch (place.tipo.toLowerCase()) {
+      case 'hotel':      return '🏨';
+      case 'restaurant': return '🍽️';
+      case 'bar':        return '🍹';
+      default:           return '📍';
+    }
+  }
+
+  // URL del QR con color personalizado por tipo
+  String get _qrImageUrl {
+    final encoded = Uri.encodeComponent(_qrData);
+    // Color del QR según tipo (sin #)
+    String qrColor;
+    switch (place.tipo.toLowerCase()) {
+      case 'hotel':      qrColor = '2563EB'; break;
+      case 'restaurant': qrColor = '059669'; break;
+      case 'bar':        qrColor = 'D97706'; break;
+      default:           qrColor = '06B6A4'; break;
+    }
+    return 'https://api.qrserver.com/v1/create-qr-code/'
+        '?size=400x400&data=$encoded&format=png&margin=12'
+        '&color=$qrColor&bgcolor=FFFFFF';
+  }
+
+  // FIX: Descarga real — fetch la imagen y crear blob para download
   Future<void> _downloadQR(BuildContext context) async {
     try {
       if (kIsWeb) {
-        // En Flutter Web: crear link y hacer click
-        final anchor = html.AnchorElement(href: _qrImageUrl)
-          ..setAttribute('download', 'QR_${place.name.replaceAll(' ', '_')}.png')
-          ..setAttribute('target', '_blank');
-        html.document.body?.append(anchor);
-        anchor.click();
-        anchor.remove();
-
+        // Mostrar indicador de descarga
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ Descargando QR de "${place.name}"'),
-              backgroundColor: Colors.green,
-              duration: const Duration(seconds: 2),
+            const SnackBar(
+              content: Text('Preparando descarga...'),
+              backgroundColor: Colors.blue,
+              duration: Duration(seconds: 1),
             ),
           );
+        }
+
+        // Fetch la imagen como bytes
+        final response = await http.get(Uri.parse(_qrImageUrl));
+        if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+          final blob = html.Blob([bytes], 'image/png');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+
+          final anchor = html.AnchorElement(href: url)
+            ..setAttribute('download', 'QR_${place.name.replaceAll(' ', '_')}_${place.tipo}.png')
+            ..style.display = 'none';
+
+          html.document.body?.append(anchor);
+          anchor.click();
+
+          // Limpiar
+          Future.delayed(const Duration(milliseconds: 100), () {
+            anchor.remove();
+            html.Url.revokeObjectUrl(url);
+          });
+
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ QR de "${place.name}" descargado'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } else {
+          throw Exception('Error al descargar imagen: ${response.statusCode}');
         }
       }
     } catch (e) {
@@ -62,7 +126,6 @@ class QRDialog extends StatelessWidget {
     }
   }
 
-  // ── Abrir QR en nueva pestaña ─────────────────────────
   void _openInNewTab() {
     if (kIsWeb) {
       html.window.open(_qrImageUrl, '_blank');
@@ -74,23 +137,23 @@ class QRDialog extends StatelessWidget {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 420,
+        width: 440,
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
 
-            // ── Header ──────────────────────────────────
+            // ── Header con color del tipo ─────────────────
             Row(children: [
               Container(
-                width: 40, height: 40,
+                width: 44, height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF06B6A4).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: _typeLightColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _typeColor.withOpacity(0.3)),
                 ),
                 child: Center(
-                  child: Text(place.tipoEmoji,
-                      style: const TextStyle(fontSize: 20)),
+                  child: Text(_typeIcon, style: const TextStyle(fontSize: 22)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -113,57 +176,57 @@ class QRDialog extends StatelessWidget {
               ),
             ]),
 
-            const Divider(height: 24),
+            const SizedBox(height: 16),
 
-            // ── Código QR ────────────────────────────────
+            // ── QR con borde del color del tipo ───────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _typeColor.withOpacity(0.25), width: 2),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: _typeColor.withOpacity(0.08),
                     spreadRadius: 2,
-                    blurRadius: 8,
+                    blurRadius: 12,
                   ),
                 ],
               ),
               child: Column(children: [
                 // Imagen del QR
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   child: Image.network(
                     _qrImageUrl,
-                    width: 250,
-                    height: 250,
+                    width: 260,
+                    height: 260,
                     fit: BoxFit.cover,
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return SizedBox(
-                        width: 250, height: 250,
+                        width: 260, height: 260,
                         child: Center(
                           child: CircularProgressIndicator(
                             value: loadingProgress.expectedTotalBytes != null
                                 ? loadingProgress.cumulativeBytesLoaded /
                                 loadingProgress.expectedTotalBytes!
                                 : null,
-                            color: const Color(0xFF06B6A4),
+                            color: _typeColor,
                           ),
                         ),
                       );
                     },
                     errorBuilder: (context, error, stack) => Container(
-                      width: 250, height: 250,
+                      width: 260, height: 260,
                       color: Colors.grey[100],
-                      child: const Column(
+                      child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.qr_code, size: 60, color: Colors.grey),
-                          SizedBox(height: 8),
+                          Icon(Icons.qr_code, size: 60, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
                           Text('Error al cargar QR',
-                              style: TextStyle(color: Colors.grey)),
+                              style: TextStyle(color: Colors.grey[500])),
                         ],
                       ),
                     ),
@@ -171,26 +234,26 @@ class QRDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // Código del QR
+                // Código con color del tipo
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: _typeLightColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.qr_code_2,
-                          size: 16, color: Colors.grey),
+                      Icon(Icons.qr_code_2, size: 16, color: _typeColor),
                       const SizedBox(width: 6),
                       Text(
                         _qrData,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: 'monospace',
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
+                          color: _typeColor,
                         ),
                       ),
                     ],
@@ -205,22 +268,19 @@ class QRDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF06B6A4).withOpacity(0.05),
+                color: _typeLightColor.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                    color: const Color(0xFF06B6A4).withOpacity(0.2)),
+                border: Border.all(color: _typeColor.withOpacity(0.15)),
               ),
               child: Row(children: [
-                const Icon(Icons.info_outline,
-                    size: 16, color: Color(0xFF06B6A4)),
+                Icon(Icons.info_outline, size: 16, color: _typeColor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'Imprime este QR y colócalo en el establecimiento. '
                         'Los turistas lo escanean con la app Nova para '
                         'acumular puntos y obtener recompensas.',
-                    style: TextStyle(
-                        fontSize: 11, color: Colors.grey[700]),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[700]),
                   ),
                 ),
               ]),
@@ -228,23 +288,21 @@ class QRDialog extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // ── Botones de acción ────────────────────────
+            // ── Botones ──────────────────────────────────
             Row(children: [
-              // Abrir en nueva pestaña
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _openInNewTab,
                   icon: const Icon(Icons.open_in_new, size: 18),
                   label: const Text('Abrir'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF06B6A4),
-                    side: const BorderSide(color: Color(0xFF06B6A4)),
+                    foregroundColor: _typeColor,
+                    side: BorderSide(color: _typeColor),
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              // Descargar PNG
               Expanded(
                 flex: 2,
                 child: ElevatedButton.icon(
@@ -252,7 +310,7 @@ class QRDialog extends StatelessWidget {
                   icon: const Icon(Icons.download, size: 18),
                   label: const Text('Descargar PNG'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF06B6A4),
+                    backgroundColor: _typeColor,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),

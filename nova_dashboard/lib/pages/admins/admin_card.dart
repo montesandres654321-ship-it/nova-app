@@ -1,8 +1,8 @@
 // lib/pages/admins/admin_card.dart
-// CAMBIO: agregado parámetro onTapDeactivate (VoidCallback?)
-//   - Botón "Desactivar" aparece solo si onTapDeactivate != null
-//   - Color rojo para distinguirlo visualmente del resto de acciones
-
+// ============================================================
+// FIX: Eliminado ⭐ rating de _buildPlaceInfo
+// Todo lo demás sin cambios
+// ============================================================
 import 'package:flutter/material.dart';
 import '../../models/admin_stats_model.dart';
 import '../../utils/constants.dart';
@@ -13,7 +13,7 @@ class AdminCard extends StatelessWidget {
   final VoidCallback?   onTapEdit;
   final VoidCallback?   onTapReassign;
   final VoidCallback?   onTapDashboard;
-  final VoidCallback?   onTapDeactivate; // ← NUEVO
+  final VoidCallback?   onTapDeactivate;
 
   const AdminCard({
     Key? key,
@@ -22,7 +22,7 @@ class AdminCard extends StatelessWidget {
     this.onTapEdit,
     this.onTapReassign,
     this.onTapDashboard,
-    this.onTapDeactivate,             // ← NUEVO
+    this.onTapDeactivate,
   }) : super(key: key);
 
   @override
@@ -38,8 +38,6 @@ class AdminCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
-            // ── Header: avatar + datos ────────────────────
             Row(children: [
               CircleAvatar(
                   radius: 24,
@@ -83,15 +81,12 @@ class AdminCard extends StatelessWidget {
                   ])),
             ]),
 
-            // ── Info del lugar (si tiene) ─────────────────
             if (hasPlace && adminStats.placeStats != null) ...[
               const Divider(height: 24),
               _buildPlaceInfo(adminStats.placeStats!),
             ],
 
             const SizedBox(height: 12),
-
-            // ── Botones de acción ─────────────────────────
             _buildActionButtons(hasPlace),
           ],
         ),
@@ -99,6 +94,7 @@ class AdminCard extends StatelessWidget {
     );
   }
 
+  // FIX: Eliminado ⭐ rating — solo muestra tipo, ubicación, escaneos, recompensas
   Widget _buildPlaceInfo(PlaceStats stats) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,9 +111,8 @@ class AdminCard extends StatelessWidget {
         Text('📍 ${stats.placeLocation}',
             style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         const SizedBox(height: 8),
+        // FIX: sin ⭐ rating — solo escaneos y recompensas
         Wrap(spacing: 16, children: [
-          Text('⭐ ${stats.ratingFormatted}',
-              style: const TextStyle(fontSize: 12)),
           Text('📱 ${stats.totalScans} escaneos',
               style: const TextStyle(fontSize: 12)),
           Text('🎁 ${stats.totalRewards} recompensas',
@@ -138,14 +133,12 @@ class AdminCard extends StatelessWidget {
           _buildButton('Ver Dashboard', Icons.dashboard,  onTapDashboard),
           _buildButton('Reasignar',     Icons.swap_horiz, onTapReassign),
         ],
-        // ← NUEVO: botón Desactivar — solo aparece si onTapDeactivate != null
         if (onTapDeactivate != null)
           _buildDeactivateButton(),
       ],
     );
   }
 
-  // Botón estándar — gris cuando onTap es null
   Widget _buildButton(String label, IconData icon, VoidCallback? onTap) {
     return OutlinedButton.icon(
         onPressed: onTap,
@@ -156,7 +149,6 @@ class AdminCard extends StatelessWidget {
             textStyle: const TextStyle(fontSize: 12)));
   }
 
-  // Botón Desactivar — rojo para distinguirlo
   Widget _buildDeactivateButton() {
     return OutlinedButton.icon(
         onPressed: onTapDeactivate,
