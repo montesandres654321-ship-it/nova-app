@@ -2,7 +2,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'scan_record.dart';
+import '../models/scan_record.dart';
 import '../models/place_model.dart';
 
 class ApiService {
