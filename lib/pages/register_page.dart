@@ -1,12 +1,8 @@
-// lib/pages/register_page.dart
-// ============================================================
-// REGISTRO — Nova App Móvil
-// ============================================================
-// Usa ApiService.register() — IP y rutas centralizadas
-// ============================================================
-
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../core/design/app_colors.dart';
+import '../core/design/app_spacing.dart';
+import '../core/design/app_radius.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -34,6 +30,8 @@ class _RegisterPageState extends State<RegisterPage> {
 
   final List<String> _countryCodes = ['+57', '+1', '+34', '+52'];
 
+  // ── Lifecycle ──────────────────────────────────────────────
+
   @override
   void dispose() {
     _firstCtrl.dispose();
@@ -47,6 +45,8 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
+  // ── Actions ────────────────────────────────────────────────
+
   Future<void> _pickDate() async {
     if (!mounted) return;
     final now = DateTime.now();
@@ -59,7 +59,10 @@ class _RegisterPageState extends State<RegisterPage> {
         lastDate: now,
         builder: (context, child) => Theme(
           data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(primary: Color(0xFF06B6A4), onPrimary: Colors.white),
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: AppColors.onPrimary,
+            ),
           ),
           child: child!,
         ),
@@ -67,11 +70,20 @@ class _RegisterPageState extends State<RegisterPage> {
       if (!mounted) return;
       if (picked != null) {
         setState(() {
-          _dobCtrl.text = "${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+          _dobCtrl.text =
+              '${picked.year.toString().padLeft(4, '0')}-'
+              '${picked.month.toString().padLeft(2, '0')}-'
+              '${picked.day.toString().padLeft(2, '0')}';
         });
       }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error: $e'),
+              backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -79,7 +91,11 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (!_acceptTos) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Debes aceptar los términos y condiciones')));
+        const SnackBar(
+          content: Text('Debes aceptar los términos y condiciones'),
+          backgroundColor: AppColors.error,
+        ),
+      );
       return;
     }
     setState(() => _isRegistering = true);
@@ -101,160 +117,513 @@ class _RegisterPageState extends State<RegisterPage> {
 
       if (data['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Cuenta creada correctamente"), backgroundColor: Colors.green));
+          const SnackBar(
+            content: Text('Cuenta creada correctamente'),
+            backgroundColor: AppColors.success,
+          ),
+        );
         Navigator.of(context).pop();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(data['error'] ?? 'Error al registrar')));
+          SnackBar(
+            content: Text(data['error'] ?? 'Error al registrar'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error: $e'), backgroundColor: AppColors.error),
+      );
     } finally {
       if (mounted) setState(() => _isRegistering = false);
     }
   }
 
+  String? Function(String?) _reqValidator(String field) =>
+      (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu $field' : null;
+
+  // ── Build ──────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
-    const Color tealStart = Color(0xFF06B6A4);
-    const Color tealEnd = Color(0xFF0EA5E9);
-    final maxWidth = MediaQuery.of(context).size.width * 0.94;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Registro'), backgroundColor: tealStart,
-          leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.of(context).pop())),
       body: Container(
-        decoration: const BoxDecoration(gradient: LinearGradient(colors: [tealStart, tealEnd], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
+        decoration:
+            const BoxDecoration(gradient: AppColors.primaryGradient),
         child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-              child: SizedBox(
-                width: maxWidth,
-                child: Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(children: [
-                        _field('Nombre', Icons.person_outline, _firstCtrl, validator: _reqValidator('nombre')),
-                        const SizedBox(height: 12),
-                        _field('Apellido', Icons.person_outline, _lastCtrl, validator: _reqValidator('apellido')),
-                        const SizedBox(height: 12),
-                        // Username con hint claro
-                        TextFormField(controller: _usernameCtrl,
-                          decoration: InputDecoration(
-                            labelText: 'Nombre de usuario',
-                            hintText: 'ej: yeison_alvarez',
-                            helperText: 'Sin espacios, será tu identificador único',
-                            helperStyle: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                            prefixIcon: const Icon(Icons.account_box_outlined),
-                            filled: true, fillColor: Colors.grey.shade50,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          ),
-                          onChanged: (v) {
-                            // Auto-reemplazar espacios por guion bajo
-                            if (v.contains(' ')) {
-                              _usernameCtrl.text = v.replaceAll(' ', '_');
-                              _usernameCtrl.selection = TextSelection.fromPosition(
-                                  TextPosition(offset: _usernameCtrl.text.length));
-                            }
-                          },
-                          validator: (v) {
-                            if (v == null || v.trim().isEmpty) return 'Elige un nombre de usuario';
-                            if (v.contains(' ')) return 'Sin espacios (usa _ o .)';
-                            if (v.length < 3) return 'Mínimo 3 caracteres';
-                            if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(v)) return 'Solo letras, números, _ y .';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        _field('Correo electrónico', Icons.email_outlined, _emailCtrl,
-                            keyboard: TextInputType.emailAddress,
-                            validator: (v) {
-                              if (v == null || v.isEmpty) return 'Requerido';
-                              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(v)) return 'Correo inválido';
-                              return null;
-                            }),
-                        const SizedBox(height: 12),
-                        _field('Contraseña', Icons.lock_outline, _passCtrl, obscure: _obscure,
-                            suffix: IconButton(icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility), onPressed: () => setState(() => _obscure = !_obscure)),
-                            validator: (v) { if (v == null || v.isEmpty) return 'Requerido'; if (v.length < 6) return 'Mínimo 6 caracteres'; return null; }),
-                        const SizedBox(height: 12),
-                        _field('Confirmar contraseña', Icons.lock_outline, _confirmCtrl, obscure: _obscure,
-                            validator: (v) { if (v != _passCtrl.text) return 'No coinciden'; return null; }),
-                        const SizedBox(height: 12),
-                        Row(children: [
-                          Expanded(child: TextFormField(controller: _dobCtrl, readOnly: true, onTap: _pickDate,
-                              decoration: _dec('Fecha de nacimiento', Icons.cake_outlined,
-                                  suffix: IconButton(icon: const Icon(Icons.calendar_today), onPressed: _pickDate), hint: 'YYYY-MM-DD'),
-                              validator: (v) => (v == null || v.isEmpty) ? 'Selecciona fecha' : null)),
-                          const SizedBox(width: 12),
-                          Expanded(child: DropdownButtonFormField<String>(value: _gender,
-                              items: const [DropdownMenuItem(value: 'Femenino', child: Text('Femenino')),
-                                DropdownMenuItem(value: 'Masculino', child: Text('Masculino')),
-                                DropdownMenuItem(value: 'Otro', child: Text('Otro'))],
-                              onChanged: (v) => setState(() => _gender = v ?? _gender),
-                              decoration: _dec('Género', null))),
-                        ]),
-                        const SizedBox(height: 12),
-                        Row(children: [
-                          Container(padding: const EdgeInsets.symmetric(horizontal: 8),
-                              decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12)),
-                              child: DropdownButton<String>(value: _countryCode, underline: const SizedBox(),
-                                  items: _countryCodes.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                                  onChanged: (v) => setState(() => _countryCode = v ?? _countryCode))),
-                          const SizedBox(width: 8),
-                          Expanded(child: _field('Teléfono móvil', Icons.phone, _phoneCtrl,
-                              keyboard: TextInputType.phone,
-                              validator: (v) { if (v == null || v.trim().isEmpty) return 'Requerido'; if (v.trim().length < 7) return 'Muy corto'; return null; })),
-                        ]),
-                        const SizedBox(height: 12),
-                        Row(children: [
-                          Checkbox(value: _acceptTos, onChanged: (v) => setState(() => _acceptTos = v ?? false)),
-                          const Expanded(child: Text('Acepto los términos y condiciones')),
-                        ]),
-                        const SizedBox(height: 12),
-                        SizedBox(width: double.infinity, height: 50,
-                          child: ElevatedButton(
-                            onPressed: _isRegistering ? null : _register,
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Colors.black87,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                            child: _isRegistering
-                                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                                : const Text('Crear cuenta', style: TextStyle(fontSize: 16)),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('¿Ya tienes cuenta? Inicia sesión')),
-                      ]),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHero(),
+              Expanded(child: _buildFormPanel()),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _field(String label, IconData? icon, TextEditingController ctrl,
-      {bool obscure = false, Widget? suffix, TextInputType? keyboard, String? Function(String?)? validator}) {
-    return TextFormField(controller: ctrl, obscureText: obscure, keyboardType: keyboard,
-        decoration: _dec(label, icon, suffix: suffix), validator: validator);
+  // Sección superior: flecha de regreso + título
+  Widget _buildHero() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.md,
+        AppSpacing.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: AppRadius.smAll,
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: const Icon(
+                Icons.arrow_back_ios_new_rounded,
+                color: Colors.white,
+                size: 16,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const Text(
+            'Crear cuenta',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xs),
+          Text(
+            'Únete a Nova y empieza tu aventura',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.8),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
-  InputDecoration _dec(String label, IconData? icon, {Widget? suffix, String? hint}) =>
-      InputDecoration(labelText: label, hintText: hint,
-          prefixIcon: icon != null ? Icon(icon) : null, suffixIcon: suffix,
-          filled: true, fillColor: Colors.grey.shade50,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none));
+  // Panel blanco inferior con secciones del formulario
+  Widget _buildFormPanel() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(AppRadius.xl),
+          topRight: Radius.circular(AppRadius.xl),
+        ),
+      ),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.lg,
+          AppSpacing.xxl,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
 
-  String? Function(String?) _reqValidator(String field) =>
-          (v) => (v == null || v.trim().isEmpty) ? 'Ingresa tu $field' : null;
+              // ── Datos personales ──────────────────────────────
+              _buildSectionLabel('Datos personales'),
+              _buildInput(
+                controller: _firstCtrl,
+                label: 'Nombre',
+                icon: Icons.person_outline_rounded,
+                validator: _reqValidator('nombre'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildInput(
+                controller: _lastCtrl,
+                label: 'Apellido',
+                icon: Icons.person_outline_rounded,
+                validator: _reqValidator('apellido'),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildInput(
+                controller: _dobCtrl,
+                label: 'Fecha de nacimiento',
+                icon: Icons.cake_outlined,
+                readOnly: true,
+                onTap: _pickDate,
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.calendar_today_outlined,
+                      color: AppColors.textHint, size: 18),
+                  onPressed: _pickDate,
+                ),
+                validator: (v) => (v == null || v.isEmpty)
+                    ? 'Selecciona tu fecha'
+                    : null,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                initialValue: _gender,
+                style: const TextStyle(
+                    fontSize: 15, color: AppColors.textPrimary),
+                decoration: _inputDecoration(
+                  label: 'Género',
+                  icon: Icons.wc_outlined,
+                ),
+                items: const [
+                  DropdownMenuItem(
+                      value: 'Femenino', child: Text('Femenino')),
+                  DropdownMenuItem(
+                      value: 'Masculino', child: Text('Masculino')),
+                  DropdownMenuItem(value: 'Otro', child: Text('Otro')),
+                ],
+                onChanged: (v) =>
+                    setState(() => _gender = v ?? _gender),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Tu cuenta ─────────────────────────────────────
+              _buildSectionLabel('Tu cuenta'),
+              TextFormField(
+                controller: _usernameCtrl,
+                style: const TextStyle(
+                    fontSize: 15, color: AppColors.textPrimary),
+                onChanged: (v) {
+                  if (v.contains(' ')) {
+                    _usernameCtrl.text = v.replaceAll(' ', '_');
+                    _usernameCtrl.selection = TextSelection.fromPosition(
+                        TextPosition(
+                            offset: _usernameCtrl.text.length));
+                  }
+                },
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Elige un nombre de usuario';
+                  }
+                  if (v.contains(' ')) return 'Sin espacios (usa _ o .)';
+                  if (v.length < 3) return 'Mínimo 3 caracteres';
+                  if (!RegExp(r'^[a-zA-Z0-9._]+$').hasMatch(v)) {
+                    return 'Solo letras, números, _ y .';
+                  }
+                  return null;
+                },
+                decoration: _inputDecoration(
+                  label: 'Nombre de usuario',
+                  icon: Icons.account_box_outlined,
+                ).copyWith(
+                  hintText: 'ej: viajero_nova',
+                  helperText: 'Sin espacios · Solo letras, números, _ y .',
+                  helperStyle: const TextStyle(
+                      fontSize: 11, color: AppColors.textHint),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildInput(
+                controller: _emailCtrl,
+                label: 'Correo electrónico',
+                icon: Icons.email_outlined,
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Requerido';
+                  if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                      .hasMatch(v)) {
+                    return 'Correo inválido';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Seguridad ──────────────────────────────────────
+              _buildSectionLabel('Seguridad'),
+              _buildInput(
+                controller: _passCtrl,
+                label: 'Contraseña',
+                icon: Icons.lock_outline_rounded,
+                obscureText: _obscure,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscure
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: AppColors.textHint,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscure = !_obscure),
+                ),
+                validator: (v) {
+                  if (v == null || v.isEmpty) return 'Requerido';
+                  if (v.length < 6) return 'Mínimo 6 caracteres';
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _buildInput(
+                controller: _confirmCtrl,
+                label: 'Confirmar contraseña',
+                icon: Icons.lock_outline_rounded,
+                obscureText: _obscure,
+                validator: (v) {
+                  if (v != _passCtrl.text) {
+                    return 'Las contraseñas no coinciden';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Contacto ──────────────────────────────────────
+              _buildSectionLabel('Contacto'),
+              _buildPhoneRow(),
+              const SizedBox(height: AppSpacing.xl),
+
+              // ── Términos ──────────────────────────────────────
+              _buildTermsRow(),
+              const SizedBox(height: AppSpacing.lg),
+
+              // ── Botón principal ───────────────────────────────
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isRegistering ? null : _register,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    disabledBackgroundColor:
+                        AppColors.primary.withValues(alpha: 0.55),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: AppRadius.mdAll),
+                  ),
+                  child: _isRegistering
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.onPrimary),
+                        )
+                      : const Text(
+                          'Crear cuenta',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600),
+                        ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+
+              // Link de vuelta al login
+              Center(
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    '¿Ya tienes cuenta? Inicia sesión',
+                    style: TextStyle(
+                        fontSize: 14, color: AppColors.textSecondary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Widgets privados ───────────────────────────────────────
+
+  // Cabecera de sección: texto en mayúsculas con letra tracking
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+      child: Text(
+        text.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textHint,
+          letterSpacing: 0.8,
+        ),
+      ),
+    );
+  }
+
+  // Fila de teléfono: selector de código + campo de número
+  Widget _buildPhoneRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Dropdown del código de país — ancho fijo, mismo estilo que inputs
+        SizedBox(
+          width: 88,
+          child: DropdownButtonFormField<String>(
+            initialValue: _countryCode,
+            isExpanded: true,
+            style: const TextStyle(
+                fontSize: 14, color: AppColors.textPrimary),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: AppColors.surfaceVariant,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.md,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: AppRadius.mdAll,
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: AppRadius.mdAll,
+                borderSide: const BorderSide(
+                    color: AppColors.primary, width: 1.5),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: AppRadius.mdAll,
+                borderSide:
+                    const BorderSide(color: AppColors.error),
+              ),
+            ),
+            items: _countryCodes
+                .map((c) => DropdownMenuItem(
+                    value: c,
+                    child: Text(c,
+                        style: const TextStyle(fontSize: 13))))
+                .toList(),
+            onChanged: (v) =>
+                setState(() => _countryCode = v ?? _countryCode),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: _buildInput(
+            controller: _phoneCtrl,
+            label: 'Teléfono móvil',
+            icon: Icons.phone_outlined,
+            keyboardType: TextInputType.phone,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Requerido';
+              if (v.trim().length < 7) return 'Número muy corto';
+              return null;
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Fila de aceptación de términos
+  Widget _buildTermsRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Transform.scale(
+          scale: 0.9,
+          child: Checkbox(
+            value: _acceptTos,
+            onChanged: (v) =>
+                setState(() => _acceptTos = v ?? false),
+            activeColor: AppColors.primary,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+        ),
+        const Expanded(
+          child: Text(
+            'Acepto los términos y condiciones',
+            style: TextStyle(
+                fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // InputDecoration base — única fuente de verdad para todos los campos
+  InputDecoration _inputDecoration({
+    required String label,
+    required IconData? icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle:
+          const TextStyle(fontSize: 14, color: AppColors.textHint),
+      prefixIcon: icon != null
+          ? Icon(icon, size: 20, color: AppColors.textHint)
+          : null,
+      filled: true,
+      fillColor: AppColors.surfaceVariant,
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: AppRadius.mdAll,
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: AppRadius.mdAll,
+        borderSide:
+            const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: AppRadius.mdAll,
+        borderSide: const BorderSide(color: AppColors.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: AppRadius.mdAll,
+        borderSide:
+            const BorderSide(color: AppColors.error, width: 1.5),
+      ),
+    );
+  }
+
+  // TextFormField estilizado con tokens del design system
+  Widget _buildInput({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    bool readOnly = false,
+    Widget? suffixIcon,
+    TextInputType? keyboardType,
+    VoidCallback? onTap,
+    String? Function(String?)? validator,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      onTap: onTap,
+      style:
+          const TextStyle(fontSize: 15, color: AppColors.textPrimary),
+      decoration: _inputDecoration(label: label, icon: icon)
+          .copyWith(suffixIcon: suffixIcon),
+      validator: validator,
+    );
+  }
 }
