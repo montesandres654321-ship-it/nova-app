@@ -1,9 +1,16 @@
-// lib/pages/profile_page.dart -
+// lib/pages/profile_page.dart
+// ============================================================
+// PERFIL — Nova App Móvil
+// ============================================================
+// Usa ApiService.updateProfile() — PATCH /users/me/profile con token
+// ============================================================
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'google_auth_service.dart';
+import '../services/api_service.dart';
+import '../services/google_auth_service.dart';
+import '../utils/constants.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,18 +21,15 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _firstNameCtrl = TextEditingController();
-  final TextEditingController _lastNameCtrl = TextEditingController();
-  final TextEditingController _usernameCtrl = TextEditingController();
-  final TextEditingController _emailCtrl = TextEditingController();
-  final TextEditingController _phoneCtrl = TextEditingController();
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
 
   bool _editing = false;
   bool _loading = false;
-  int? userId;
   bool _isGoogleUser = false;
-
-  final String backendUrl = "http://192.168.2.168:3000";
 
   @override
   void initState() {
@@ -36,115 +40,58 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userStr = prefs.getString('user');
+      final userStr = prefs.getString(AppConstants.keyUser);
       final isGoogle = await GoogleAuthService.isGoogleUser();
-
-      setState(() {
-        _isGoogleUser = isGoogle;
-      });
+      setState(() => _isGoogleUser = isGoogle);
 
       if (userStr != null) {
         final user = jsonDecode(userStr);
-
         setState(() {
-          userId = user["id"];
-          _firstNameCtrl.text = user["first_name"] ?? "";
-          _lastNameCtrl.text = user["last_name"] ?? "";
-          _usernameCtrl.text = user["username"] ?? "";
-          _emailCtrl.text = user["email"] ?? "";
-          _phoneCtrl.text = user["phone"] ?? "";
+          _firstNameCtrl.text = user['first_name'] ?? '';
+          _lastNameCtrl.text = user['last_name'] ?? '';
+          _usernameCtrl.text = user['username'] ?? '';
+          _emailCtrl.text = user['email'] ?? '';
+          _phoneCtrl.text = user['phone'] ?? '';
         });
       }
     } catch (e) {
-      _showError("Error cargando perfil: $e");
+      _showError('Error cargando perfil: $e');
     }
   }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
     setState(() => _loading = true);
 
     try {
-      final url = Uri.parse("$backendUrl/users/update/$userId");
+      final data = await ApiService.updateProfile(
+        firstName: _firstNameCtrl.text.trim(),
+        lastName: _lastNameCtrl.text.trim(),
+        username: _usernameCtrl.text.trim(),
+        email: _emailCtrl.text.trim(),
+        phone: _isGoogleUser ? null : _phoneCtrl.text.trim(),
+      );
 
-      debugPrint("🔄 Enviando actualización a: $url");
+      if (!mounted) return;
 
-      final response = await http.put(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "first_name": _firstNameCtrl.text.trim(),
-          "last_name": _lastNameCtrl.text.trim(),
-          "username": _usernameCtrl.text.trim(),
-          "email": _emailCtrl.text.trim(),
-          "phone": _isGoogleUser ? "" : _phoneCtrl.text.trim(),
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      debugPrint("📡 Respuesta status: ${response.statusCode}");
-
-      if (response.statusCode == 200) {
-        if (response.body.trim().startsWith('<!DOCTYPE html>')) {
-          throw Exception("El servidor respondió con HTML. Verifica el endpoint.");
-        }
-
-        final updatedUser = jsonDecode(response.body);
-
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user', jsonEncode(updatedUser));
-
-        // ✅ ACTUALIZAR TAMBIÉN LOS DATOS INDIVIDUALES
-        await prefs.setString('first_name', updatedUser["first_name"] ?? "");
-        await prefs.setString('email', updatedUser["email"] ?? "");
-
-        setState(() {
-          _editing = false;
-          _loading = false;
-        });
-
-        if (!mounted) return;
-        _showSuccess("Perfil actualizado correctamente");
-
+      if (data['success'] == true) {
+        setState(() => _editing = false);
+        _showSuccess('Perfil actualizado correctamente');
       } else {
-        if (response.statusCode == 404) {
-          throw Exception("Endpoint no encontrado (404). Verifica la URL.");
-        } else if (response.statusCode == 500) {
-          throw Exception("Error interno del servidor (500).");
-        } else {
-          throw Exception("Error ${response.statusCode}: ${response.body}");
-        }
+        _showError(data['error'] ?? 'Error al actualizar');
       }
-    } on http.ClientException catch (e) {
-      _showError("Error de conexión: $e");
-    } on Exception catch (e) {
-      _showError("Error: $e");
+    } catch (e) {
+      if (mounted) _showError('Error: $e');
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
-  void _showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
+  void _showSuccess(String msg) => ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.green));
 
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  }
+  void _showError(String msg) => ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: Colors.red));
 
   @override
   void dispose() {
@@ -160,18 +107,12 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     const Color tealStart = Color(0xFF06B6A4);
     const Color tealEnd = Color(0xFF0EA5E9);
-
-    final screenWidth = MediaQuery.of(context).size.width;
-    final maxWidth = screenWidth * 0.94;
+    final maxWidth = MediaQuery.of(context).size.width * 0.94;
 
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [tealStart, tealEnd],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
+          gradient: LinearGradient(colors: [tealStart, tealEnd], begin: Alignment.topCenter, end: Alignment.bottomCenter),
         ),
         child: SafeArea(
           child: Center(
@@ -179,72 +120,43 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.all(16),
               child: SizedBox(
                 width: maxWidth,
-                child: Column(
-                  children: [
-                    // Header
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const SizedBox(width: 8),
-                        const Text(
-                          "Perfil",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (!_loading)
-                          IconButton(
-                            icon: Icon(
-                              _editing ? Icons.close : Icons.edit,
-                              color: Colors.white,
-                            ),
-                            onPressed: () => setState(() => _editing = !_editing),
-                          ),
-                      ],
+                child: Column(children: [
+                  Row(children: [
+                    IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
+                    const SizedBox(width: 8),
+                    const Text("Perfil", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
+                    const Spacer(),
+                    if (!_loading)
+                      IconButton(icon: Icon(_editing ? Icons.close : Icons.edit, color: Colors.white),
+                          onPressed: () => setState(() => _editing = !_editing)),
+                  ]),
+                  const SizedBox(height: 18),
+                  Card(
+                    elevation: 10,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(children: [
+                          _buildField("Nombre", Icons.person, _firstNameCtrl, editable: _editing),
+                          const SizedBox(height: 12),
+                          _buildField("Apellido", Icons.person, _lastNameCtrl, editable: _editing),
+                          const SizedBox(height: 12),
+                          _buildField("Usuario", Icons.account_circle, _usernameCtrl, editable: _editing),
+                          const SizedBox(height: 12),
+                          _buildField("Correo", Icons.email, _emailCtrl, email: true, editable: _editing),
+                          if (!_isGoogleUser) ...[
+                            const SizedBox(height: 12),
+                            _buildField("Teléfono", Icons.phone, _phoneCtrl, editable: _editing),
+                          ],
+                          const SizedBox(height: 20),
+                          if (_editing) _buildActionButtons(),
+                        ]),
+                      ),
                     ),
-                    const SizedBox(height: 18),
-
-                    // Formulario
-                    Card(
-                      elevation: 10,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              _buildTextField("Nombre", Icons.person, _firstNameCtrl, editable: _editing),
-                              const SizedBox(height: 12),
-                              _buildTextField("Apellido", Icons.person, _lastNameCtrl, editable: _editing),
-                              const SizedBox(height: 12),
-                              _buildTextField("Usuario", Icons.account_circle, _usernameCtrl, editable: _editing),
-                              const SizedBox(height: 12),
-                              _buildTextField("Correo", Icons.email, _emailCtrl, email: true, editable: _editing),
-
-                              // ✅ CORREGIDO: Solo mostrar teléfono si NO es usuario Google
-                              if (!_isGoogleUser) ...[
-                                const SizedBox(height: 12),
-                                _buildTextField("Teléfono", Icons.phone, _phoneCtrl, editable: _editing),
-                              ],
-
-                              const SizedBox(height: 20),
-                              if (_editing) _buildActionButtons(),
-                            ],
-                          ),
-                        ),
-                      ),
-                    )
-                  ],
-                ),
+                  ),
+                ]),
               ),
             ),
           ),
@@ -253,66 +165,36 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildTextField(
-      String label,
-      IconData icon,
-      TextEditingController controller, {
-        bool email = false,
-        required bool editable,
-      }) {
+  Widget _buildField(String label, IconData icon, TextEditingController ctrl, {bool email = false, required bool editable}) {
     return TextFormField(
-      controller: controller,
+      controller: ctrl,
       enabled: editable && !_loading,
       keyboardType: email ? TextInputType.emailAddress : TextInputType.text,
       decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        filled: true,
-        fillColor: editable ? Colors.grey.shade50 : Colors.grey.shade200,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
+        labelText: label, prefixIcon: Icon(icon),
+        filled: true, fillColor: editable ? Colors.grey.shade50 : Colors.grey.shade200,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       ),
       validator: (v) {
         if (!editable) return null;
-        if (v == null || v.isEmpty) return "Campo obligatorio";
-        if (email && !v.contains("@")) return "Correo inválido";
+        if (v == null || v.isEmpty) return 'Campo obligatorio';
+        if (email && !v.contains('@')) return 'Correo inválido';
         return null;
       },
     );
   }
 
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: _loading ? null : () => setState(() => _editing = false),
-            child: const Text("Cancelar"),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _loading ? null : _save,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF06B6A4),
-              foregroundColor: Colors.white,
-            ),
-            child: _loading
-                ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            )
-                : const Text("Guardar"),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildActionButtons() => Row(children: [
+    Expanded(child: OutlinedButton(
+        onPressed: _loading ? null : () => setState(() => _editing = false),
+        child: const Text("Cancelar"))),
+    const SizedBox(width: 10),
+    Expanded(child: ElevatedButton(
+      onPressed: _loading ? null : _save,
+      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF06B6A4), foregroundColor: Colors.white),
+      child: _loading
+          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white)))
+          : const Text("Guardar"),
+    )),
+  ]);
 }

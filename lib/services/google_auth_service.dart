@@ -1,167 +1,126 @@
 // lib/services/google_auth_service.dart
-import 'package:flutter/material.dart';
+// ============================================================
+// SERVICIO DE AUTENTICACIÓN GOOGLE — Nova App Móvil
+// ============================================================
+// Usa AppConstants para IP y keys
+// Guarda token JWT tras login exitoso
+// ============================================================
+
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../utils/constants.dart';
 
 class GoogleAuthService {
   static final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
   );
 
-  static final String backendUrl = "http://192.168.2.178:3000";
-
-  // ✅ CORREGIDO: Login con Google mejorado
+  /// Login completo con Google: autenticar + sincronizar con backend
   static Future<Map<String, dynamic>?> signInWithGoogle() async {
     try {
       debugPrint('🔵 Iniciando autenticación con Google...');
 
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) {
-        debugPrint('🟡 Usuario canceló el login');
-        return {
-          'success': false,
-          'error': 'El usuario canceló el inicio de sesión'
-        };
+        return {'success': false, 'error': 'Inicio de sesión cancelado'};
       }
 
-      debugPrint('🟢 Usuario de Google autenticado: ${googleUser.email}');
-      debugPrint('📝 ID: ${googleUser.id}');
-      debugPrint('👤 Nombre: ${googleUser.displayName}');
+      debugPrint('🟢 Google autenticado: ${googleUser.email}');
 
-      // ✅ CORREGIDO: Sincronizar con el backend
+      // Sincronizar con backend
       final backendResult = await _syncWithBackend(googleUser);
 
       if (backendResult != null && backendResult['success'] == true) {
-        final userData = backendResult['user'];
+        // Backend devuelve token y user en raíz Y en data.data
+        final inner = backendResult['data'];
+        final userData = backendResult['user'] ?? inner?['user'];
+        final token = backendResult['token'] ?? inner?['token'];
 
-        // ✅ CORREGIDO: Guardar datos completos en SharedPreferences
+        // Guardar datos en SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user', jsonEncode(userData));
-        await prefs.setString('email', userData['email'] ?? '');
-        await prefs.setString('username', userData['username'] ?? '');
-        await prefs.setString('first_name', userData['first_name'] ?? '');
-        await prefs.setString('auth_provider', 'google');
-        await prefs.setInt('userId', userData['id']);
+        if (token != null) await prefs.setString(AppConstants.keyToken, token);
+        if (userData != null) {
+          await prefs.setString(AppConstants.keyUser, jsonEncode(userData));
+          await prefs.setString(AppConstants.keyEmail, userData['email'] ?? '');
+          await prefs.setString(AppConstants.keyUsername, userData['username'] ?? '');
+          await prefs.setString(AppConstants.keyFirstName, userData['first_name'] ?? '');
+          await prefs.setString(AppConstants.keyAuthProvider, 'google');
+          if (userData['id'] != null) await prefs.setInt(AppConstants.keyUserId, userData['id']);
+        }
 
-        debugPrint('✅ Login con Google exitoso - Datos guardados');
-
+        debugPrint('✅ Login Google exitoso');
         return {
           'success': true,
           'user': userData,
-          'message': backendResult['message'] ?? 'Bienvenido ${userData['first_name'] ?? userData['username']}'
+          'message': 'Bienvenido ${userData?['first_name'] ?? userData?['username'] ?? ''}',
         };
       } else {
-        final errorMsg = backendResult?['error'] ?? 'Error al sincronizar con el servidor';
-        debugPrint('🔴 Error en backend: $errorMsg');
-
-        // Cerrar sesión de Google si falla
         await _googleSignIn.signOut();
-
         return {
           'success': false,
-          'error': errorMsg
+          'error': backendResult?['error'] ?? 'Error al sincronizar con el servidor',
         };
       }
-
     } catch (error) {
-      debugPrint('🔴 Error crítico en Google SignIn: $error');
-
-      // Cerrar sesión de Google si hay error
+      debugPrint('🔴 Error en Google SignIn: $error');
       await _googleSignIn.signOut();
-
-      return {
-        'success': false,
-        'error': 'Error al iniciar sesión con Google: $error'
-      };
+      return {'success': false, 'error': 'Error: $error'};
     }
   }
 
+  /// Sincronizar usuario Google con el backend
   static Future<Map<String, dynamic>?> _syncWithBackend(GoogleSignInAccount googleUser) async {
     try {
-      debugPrint('🌐 Enviando datos al backend...');
-
-      final Map<String, dynamic> requestData = {
-        "google_uid": googleUser.id,
-        "uid": googleUser.id,
-        "email": googleUser.email,
-        "name": googleUser.displayName,
-        "photoUrl": googleUser.photoUrl,
-      };
-
-      debugPrint('📤 Datos enviados: ${jsonEncode(requestData)}');
-
       final response = await http.post(
-        Uri.parse("$backendUrl/users/google-auth"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(requestData),
-      );
-
-      debugPrint('📥 Respuesta del backend: ${response.statusCode}');
+        Uri.parse(AppConstants.buildUrl(AppConstants.googleAuthEndpoint)),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'google_uid': googleUser.id,
+          'uid': googleUser.id,
+          'email': googleUser.email,
+          'name': googleUser.displayName,
+          'photoUrl': googleUser.photoUrl,
+        }),
+      ).timeout(AppConstants.timeoutNormal);
 
       if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        debugPrint('✅ Backend procesó correctamente');
-        return result;
+        return jsonDecode(response.body);
       } else {
         final errorData = jsonDecode(response.body);
-        final errorMsg = errorData['error'] ?? 'Error del servidor: ${response.statusCode}';
-        debugPrint('🔴 Error del backend: $errorMsg');
-
-        return {
-          'success': false,
-          'error': errorMsg
-        };
+        return {'success': false, 'error': errorData['error'] ?? 'Error del servidor'};
       }
     } catch (e) {
       debugPrint('🔴 Error de conexión: $e');
-      return {
-        'success': false,
-        'error': 'Error de conexión con el servidor: $e'
-      };
+      return {'success': false, 'error': 'Error de conexión: $e'};
     }
   }
 
-  // ✅ CORREGIDO: Cerrar sesión mejorado
+  /// Cerrar sesión
   static Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear(); // Limpiar TODO
-      debugPrint('✅ Sesión de Google cerrada y datos limpiados');
-    } catch (error) {
-      debugPrint('🔴 Error al cerrar sesión: $error');
-      // Forzar limpieza incluso si hay error
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
-    }
+    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 
-  // Verificar si el usuario actual es de Google
+  /// Verificar si el usuario actual es de Google
   static Future<bool> isGoogleUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final authProvider = prefs.getString('auth_provider');
-    return authProvider == 'google';
+    return prefs.getString(AppConstants.keyAuthProvider) == 'google';
   }
 
-  // Obtener usuario actual
+  /// Obtener usuario actual desde SharedPreferences
   static Future<Map<String, dynamic>?> getCurrentUser() async {
     final prefs = await SharedPreferences.getInstance();
-    final userData = prefs.getString('user');
-    if (userData != null) {
-      return jsonDecode(userData);
-    }
+    final userData = prefs.getString(AppConstants.keyUser);
+    if (userData != null) return jsonDecode(userData);
     return null;
   }
 
-  // Verificar si hay una sesión activa de Google
-  static Future<bool> isSignedIn() async {
-    return await _googleSignIn.isSignedIn();
-  }
-
-  // Obtener el usuario actual de Google
-  static Future<GoogleSignInAccount?> getCurrentGoogleUser() async {
-    return _googleSignIn.currentUser;
-  }
+  /// Verificar si hay sesión activa de Google
+  static Future<bool> isSignedIn() async => await _googleSignIn.isSignedIn();
 }

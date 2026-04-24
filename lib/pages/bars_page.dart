@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'bar_detail_page.dart';
 import '../models/place_model.dart';
-import 'api_service.dart'; // ✅ CORREGIDO: ApiService en lugar de PlacesService
+import '../services/api_service.dart'; // ✅ CORREGIDO: ApiService en lugar de PlacesService
 
 class BarsPage extends StatefulWidget {
   const BarsPage({super.key});

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'profile_page.dart';
 import 'change_password_page.dart';
 import 'about_page.dart';
-import 'google_auth_service.dart';
+import '../services/google_auth_service.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});

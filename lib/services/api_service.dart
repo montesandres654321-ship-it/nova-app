@@ -1,244 +1,100 @@
-// lib/services/api_service.dart -
+// lib/services/api_service.dart
+// ============================================================
+// SERVICIO API CENTRALIZADO — Nova App Móvil
+// ============================================================
+// • Usa AppConstants para IP y endpoints
+// • Envía token JWT en peticiones autenticadas
+// • Parsea data['data'] (formato backend v6.0)
+// • Sin datos mock — muestra errores reales
+// ============================================================
+
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/scan_record.dart';
+import '../utils/constants.dart';
 import '../models/place_model.dart';
+import '../models/scan_record.dart';
 
 class ApiService {
-  // ✅ IP CORRECTA - MISMA QUE DASHBOARD
-  static const String backendUrl = "http://192.168.2.178:3000";
+  ApiService._(); // No instanciable — todos los métodos son static
 
-  // ==================== MÉTODOS MEJORADOS PARA LUGARES ====================
+  // ─── Headers ────────────────────────────────────────────
 
-  // ✅ MEJORADO: Obtener bares con manejo de errores mejorado
-  static Future<List<Place>> getBars() async {
-    return _getPlacesByType('bar');
+  /// Headers básicos sin autenticación
+  static Map<String, String> get _headers => {
+    'Content-Type': 'application/json',
+  };
+
+  /// Headers con token JWT para peticiones autenticadas
+  static Future<Map<String, String>> _authHeaders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(AppConstants.keyToken);
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
   }
 
-  // ✅ MEJORADO: Obtener hoteles
-  static Future<List<Place>> getHotels() async {
-    return _getPlacesByType('hotel');
+  /// Obtener userId guardado
+  static Future<int?> _getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(AppConstants.keyUserId);
   }
 
-  // ✅ MEJORADO: Obtener restaurantes
-  static Future<List<Place>> getRestaurants() async {
-    return _getPlacesByType('restaurant');
-  }
+  // ═══════════════════════════════════════════════════════
+  // AUTH — Login, Registro, Google
+  // ═══════════════════════════════════════════════════════
 
-  // ✅ MEJORADO: Método privado con mejor manejo de errores
-  static Future<List<Place>> _getPlacesByType(String type) async {
-    try {
-      print('🔄 Cargando lugares de tipo: $type');
-
-      final response = await http.get(
-        Uri.parse('$backendUrl/places/type/$type'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 15));
-
-      print('📡 Respuesta del servidor: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true) {
-          final List<dynamic> placesData = data['places'] ?? [];
-          print('✅ Se encontraron ${placesData.length} lugares de tipo $type');
-
-          final places = placesData.map((json) => Place.fromJson(json)).toList();
-          return places;
-        } else {
-          throw Exception(data['error'] ?? 'Error al cargar $type');
-        }
-      } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error en _getPlacesByType ($type): $e');
-      // Fallback a datos mock para desarrollo
-      return _getMockPlacesByType(type);
-    }
-  }
-
-  // ✅ NUEVO: Obtener todos los lugares
-  static Future<List<Place>> getAllPlaces() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$backendUrl/places'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true) {
-          final List<dynamic> placesData = data['places'] ?? [];
-          return placesData.map((json) => Place.fromJson(json)).toList();
-        } else {
-          throw Exception(data['error'] ?? 'Error al cargar lugares');
-        }
-      } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error en getAllPlaces: $e');
-      return [];
-    }
-  }
-
-  // ✅ MEJORADO: Validar código QR
-  static Future<Map<String, dynamic>> validateQR(String qrData) async {
-    try {
-      print('🔍 Validando QR: $qrData');
-
-      // Verificar formato básico primero
-      if (!qrData.startsWith('PLACE:')) {
-        return {
-          'valid': false,
-          'error': 'Formato QR inválido. Debe comenzar con "PLACE:"'
-        };
-      }
-
-      final response = await http.post(
-        Uri.parse('$backendUrl/qr/validate'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'qrData': qrData}),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error en validateQR: $e');
-      rethrow;
-    }
-  }
-
-  // ==================== MÉTODOS EXISTENTES MEJORADOS ====================
-
-  // ✅ MEJORADO: Obtener historial con userId
-  static Future<List<ScanRecord>> getScanHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('userId');
-
-      if (userId == null) {
-        throw Exception("Usuario no autenticado");
-      }
-
-      print('🔄 Cargando historial para usuario: $userId');
-
-      final response = await http.get(
-        Uri.parse('$backendUrl/scans/details/$userId'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true) {
-          final List<dynamic> scansData = data['scans'] ?? [];
-          print('✅ Historial cargado: ${scansData.length} escaneos');
-
-          return scansData.map((scan) => ScanRecord.fromMap(scan)).toList();
-        } else {
-          throw Exception(data['error'] ?? 'Error al obtener historial');
-        }
-      } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error en getScanHistory: $e');
-      rethrow;
-    }
-  }
-
-  // ✅ MEJORADO: Registrar escaneo
-  static Future<Map<String, dynamic>> registerScan(String qrCode) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getInt('userId');
-
-      if (userId == null) {
-        throw Exception("Usuario no autenticado");
-      }
-
-      print('📝 Registrando escaneo: $qrCode para usuario: $userId');
-
-      // Extraer placeId del código QR
-      final parts = qrCode.split(':');
-      if (parts.length != 2) {
-        throw Exception('Formato QR inválido: $qrCode');
-      }
-
-      final placeId = int.tryParse(parts[1]);
-      if (placeId == null) {
-        throw Exception('ID de lugar inválido: ${parts[1]}');
-      }
-
-      final response = await http.post(
-        Uri.parse('$backendUrl/scan'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userId': userId,
-          'placeId': placeId,
-          'qrCode': qrCode,
-        }),
-      ).timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-
-        if (data['success'] == true) {
-          print('✅ Escaneo registrado exitosamente');
-          return data;
-        } else {
-          throw Exception(data['error'] ?? 'Error al registrar escaneo');
-        }
-      } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('❌ Error en registerScan: $e');
-      rethrow;
-    }
-  }
-
-  // ✅ MANTENIDO: Login tradicional
+  /// Login con email y contraseña
   static Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('$backendUrl/users/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
-      ).timeout(const Duration(seconds: 10));
+        Uri.parse(AppConstants.buildUrl(AppConstants.loginEndpoint)),
+        headers: _headers,
+        body: jsonEncode({'email': email, 'password': password}),
+      ).timeout(AppConstants.timeoutNormal);
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // Backend devuelve: { success, data: { token, user } }
+        final inner = data['data'] ?? data;
+        await _saveAuthData(inner);
+        // Retornar aplanado para que login_page lea data['user'] y data['token'] fácil
+        return {
+          'success': true,
+          'token': inner['token'],
+          'user': inner['user'],
+        };
       } else {
-        throw Exception('Error en login: ${response.statusCode}');
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Error en login (${response.statusCode})',
+        };
       }
     } catch (e) {
-      print('❌ Error en login: $e');
-      rethrow;
+      debugPrint('❌ Error en login: $e');
+      return {'success': false, 'error': 'Error de conexión: $e'};
     }
   }
 
-  // ✅ MANTENIDO: Registro de usuario
-  static Future<Map<String, dynamic>> register(
-      String firstName, String lastName, String username,
-      String email, String password, String phone,
-      String dob, String gender, bool acceptedTerms) async {
-
+  /// Registro de nuevo usuario
+  static Future<Map<String, dynamic>> register({
+    required String firstName,
+    required String lastName,
+    required String username,
+    required String email,
+    required String password,
+    required String phone,
+    required String dob,
+    required String gender,
+    required bool acceptedTerms,
+  }) async {
     try {
       final response = await http.post(
-        Uri.parse('$backendUrl/users/register'),
-        headers: {'Content-Type': 'application/json'},
+        Uri.parse(AppConstants.buildUrl(AppConstants.registerEndpoint)),
+        headers: _headers,
         body: jsonEncode({
           'firstName': firstName,
           'lastName': lastName,
@@ -250,148 +106,358 @@ class ApiService {
           'gender': gender,
           'accepted_terms': acceptedTerms ? 1 : 0,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(AppConstants.timeoutNormal);
 
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+      final data = jsonDecode(response.body);
+
+      if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
+        // Backend devuelve: { success, data: { token, user } }
+        final inner = data['data'] ?? data;
+        await _saveAuthData(inner);
+        return {'success': true, 'token': inner['token'], 'user': inner['user']};
       } else {
-        throw Exception('Error en registro: ${response.statusCode}');
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Error en registro (${response.statusCode})',
+        };
       }
     } catch (e) {
-      print('❌ Error en register: $e');
+      debugPrint('❌ Error en register: $e');
+      return {'success': false, 'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// Guardar token y datos del usuario tras login exitoso
+  static Future<void> _saveAuthData(Map<String, dynamic> data) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = data['token'];
+    final user = data['user'];
+
+    if (token != null) {
+      await prefs.setString(AppConstants.keyToken, token);
+    }
+    if (user != null) {
+      await prefs.setString(AppConstants.keyUser, jsonEncode(user));
+      if (user['id'] != null) await prefs.setInt(AppConstants.keyUserId, user['id']);
+      if (user['username'] != null) await prefs.setString(AppConstants.keyUsername, user['username']);
+      if (user['email'] != null) await prefs.setString(AppConstants.keyEmail, user['email']);
+      if (user['first_name'] != null) await prefs.setString(AppConstants.keyFirstName, user['first_name']);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PLACES — Obtener lugares
+  // ═══════════════════════════════════════════════════════
+
+  /// Obtener todos los lugares activos
+  static Future<List<Place>> getAllPlaces() async {
+    try {
+      final response = await http.get(
+        Uri.parse(AppConstants.buildUrl(AppConstants.placesEndpoint)),
+        headers: _headers,
+      ).timeout(AppConstants.timeoutLong);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> list = data['data'] ?? [];
+          return list.map((json) => Place.fromJson(json)).toList();
+        }
+      }
+      throw Exception('Error al cargar lugares (${response.statusCode})');
+    } catch (e) {
+      debugPrint('❌ Error en getAllPlaces: $e');
       rethrow;
     }
   }
 
-  // ==================== MÉTODOS AUXILIARES MEJORADOS ====================
-
-  // ✅ MEJORADO: Datos mock para desarrollo
-  static List<Place> _getMockPlacesByType(String type) {
-    print('🔄 Usando datos mock para tipo: $type');
-
-    final allPlaces = [
-      Place(
-        id: 1,
-        name: "Hotel Sol Caribe",
-        tipo: "hotel",
-        lugar: "Coveñas",
-        description: "Hermoso hotel frente al mar con todas las comodidades y vista al océano",
-        imageUrl: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&h=300&fit=crop",
-        rating: 4.5,
-        address: "Av. Principal #123, Coveñas",
-        phone: "+57 123 456 7890",
-        priceRange: "\$100,000 - \$300,000",
-        amenities: ["Wifi", "Piscina", "Aire Acondicionado", "Restaurante", "Spa"],
-        isActive: true,
-      ),
-      Place(
-        id: 2,
-        name: "Restaurante Mar Azul",
-        tipo: "restaurant",
-        lugar: "Coveñas",
-        description: "Comida típica del caribe colombiano con los mejores mariscos frescos",
-        imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop",
-        rating: 4.7,
-        address: "Av. del Mar #234, Coveñas",
-        phone: "+57 123 456 7892",
-        priceRange: "\$50,000 - \$150,000",
-        amenities: ["Terraza", "Mariscos", "Comida Local", "Bar", "Vista al Mar"],
-        isActive: true,
-      ),
-      Place(
-        id: 3,
-        name: "Bar Arena Dorada",
-        tipo: "bar",
-        lugar: "Coveñas",
-        description: "Ambiente relajado con cocktails exclusivos y música en vivo los fines de semana",
-        imageUrl: "https://images.unsplash.com/photo-1572116469696-31de0f17cc34?w=400&h=300&fit=crop",
-        rating: 4.3,
-        address: "Calle 8 #12-34, Coveñas",
-        phone: "+57 123 456 7894",
-        priceRange: "\$20,000 - \$80,000",
-        amenities: ["Cócteles", "Música En Vivo", "Terraza", "Happy Hour", "Snacks"],
-        isActive: true,
-      ),
-      Place(
-        id: 4,
-        name: "Hotel Playa Serena",
-        tipo: "hotel",
-        lugar: "Tolú",
-        description: "Hotel familiar con piscina y jardines tropicales, ideal para descansar",
-        imageUrl: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=400&h=300&fit=crop",
-        rating: 4.2,
-        address: "Carrera 5 #12-45, Tolú",
-        phone: "+57 123 456 7891",
-        priceRange: "\$80,000 - \$200,000",
-        amenities: ["Piscina", "Jardín", "Desayuno Incluido", "Wifi", "Estacionamiento"],
-        isActive: true,
-      ),
-      Place(
-        id: 5,
-        name: "Restaurante La Bahía",
-        tipo: "restaurant",
-        lugar: "Tolú",
-        description: "Especialidad en pescados y mariscos con vista espectacular al mar",
-        imageUrl: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=300&fit=crop",
-        rating: 4.6,
-        address: "Malecón #56, Tolú",
-        phone: "+57 123 456 7893",
-        priceRange: "\$60,000 - \$180,000",
-        amenities: ["Vista al Mar", "Mariscos Frescos", "Terraza", "Bar", "Postres Caseros"],
-        isActive: true,
-      ),
-    ];
-
-    final filteredPlaces = allPlaces.where((place) => place.tipo == type).toList();
-    print('✅ Datos mock: ${filteredPlaces.length} lugares de tipo $type');
-
-    return filteredPlaces;
-  }
-
-  // ✅ NUEVO: Verificar salud del servidor
-  static Future<Map<String, dynamic>> checkServerHealth() async {
+  /// Obtener lugares por tipo (hotel, restaurant, bar)
+  static Future<List<Place>> getPlacesByType(String type) async {
     try {
       final response = await http.get(
-        Uri.parse('$backendUrl/health'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 5));
+        Uri.parse(AppConstants.buildUrl('${AppConstants.placesByTypeEndpoint}/$type')),
+        headers: _headers,
+      ).timeout(AppConstants.timeoutLong);
 
-      return {
-        'available': response.statusCode == 200,
-        'statusCode': response.statusCode,
-        'message': response.statusCode == 200 ? 'Servidor disponible' : 'Servidor no disponible'
-      };
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> list = data['data'] ?? [];
+          return list.map((json) => Place.fromJson(json)).toList();
+        }
+      }
+      throw Exception('Error al cargar $type (${response.statusCode})');
     } catch (e) {
-      print('❌ Servidor no disponible: $e');
-      return {
-        'available': false,
-        'error': 'Error de conexión: $e'
-      };
+      debugPrint('❌ Error en getPlacesByType ($type): $e');
+      rethrow;
     }
   }
 
-  // ✅ NUEVO: Obtener estadísticas del usuario
-  static Future<Map<String, dynamic>> getUserStats(int userId) async {
+  /// Obtener lugar por ID
+  static Future<Place> getPlaceById(int id) async {
     try {
       final response = await http.get(
-        Uri.parse('$backendUrl/users/$userId/stats'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(const Duration(seconds: 10));
+        Uri.parse(AppConstants.buildUrl('${AppConstants.placeByIdEndpoint}/$id')),
+        headers: _headers,
+      ).timeout(AppConstants.timeoutNormal);
 
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          return Place.fromJson(data['data']);
+        }
+      }
+      throw Exception('Lugar no encontrado');
+    } catch (e) {
+      debugPrint('❌ Error en getPlaceById: $e');
+      rethrow;
+    }
+  }
+
+  // Shortcuts
+  static Future<List<Place>> getHotels() => getPlacesByType('hotel');
+  static Future<List<Place>> getRestaurants() => getPlacesByType('restaurant');
+  static Future<List<Place>> getBars() => getPlacesByType('bar');
+
+  // ═══════════════════════════════════════════════════════
+  // SCAN — Escaneo QR
+  // ═══════════════════════════════════════════════════════
+
+  /// Registrar escaneo de código QR
+  static Future<Map<String, dynamic>> registerScan(String qrCode) async {
+    try {
+      final headers = await _authHeaders();
+      final userId = await _getUserId();
+
+      if (userId == null) {
+        return {'success': false, 'error': 'Usuario no autenticado'};
+      }
+
+      // Extraer placeId del QR (formato: PLACE:1)
+      final parts = qrCode.split(':');
+      if (parts.length != 2) {
+        return {'success': false, 'error': 'Formato QR inválido: $qrCode'};
+      }
+      final placeId = int.tryParse(parts[1]);
+      if (placeId == null) {
+        return {'success': false, 'error': 'ID de lugar inválido: ${parts[1]}'};
+      }
+
+      final response = await http.post(
+        Uri.parse(AppConstants.buildUrl(AppConstants.scanEndpoint)),
+        headers: headers,
+        body: jsonEncode({
+          'userId': userId,
+          'placeId': placeId,
+          'qrCode': qrCode,
+        }),
+      ).timeout(AppConstants.timeoutNormal);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // Backend devuelve: { success, data: { scan_id, place, reward, ... } }
+        // success_page.dart lee backendData['place'] y backendData['reward']
+        final inner = data['data'] ?? {};
+        return {
+          'success': true,
+          'place': inner['place'],
+          'reward': inner['reward'],
+          'visit_count': inner['visit_count'],
+          'message': inner['message'] ?? data['message'],
+        };
       } else {
         return {
           'success': false,
-          'error': 'Error al obtener estadísticas'
+          'error': data['error'] ?? 'Error al registrar escaneo (${response.statusCode})',
         };
       }
     } catch (e) {
-      print('❌ Error en getUserStats: $e');
-      return {
-        'success': false,
-        'error': 'Error de conexión'
-      };
+      debugPrint('❌ Error en registerScan: $e');
+      return {'success': false, 'error': 'Error de conexión: $e'};
     }
+  }
+
+  /// Validar código QR sin registrar
+  static Future<Map<String, dynamic>> validateQR(String qrData) async {
+    try {
+      if (!qrData.startsWith('PLACE:')) {
+        return {'valid': false, 'error': 'Formato QR inválido'};
+      }
+
+      final response = await http.post(
+        Uri.parse(AppConstants.buildUrl(AppConstants.qrValidateEndpoint)),
+        headers: _headers,
+        body: jsonEncode({'qrData': qrData}),
+      ).timeout(AppConstants.timeoutNormal);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      throw Exception('Error validando QR (${response.statusCode})');
+    } catch (e) {
+      debugPrint('❌ Error en validateQR: $e');
+      rethrow;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // HISTORY — Historial de escaneos
+  // ═══════════════════════════════════════════════════════
+
+  /// Obtener historial de escaneos del usuario
+  static Future<List<ScanRecord>> getScanHistory() async {
+    try {
+      final headers = await _authHeaders();
+      final userId = await _getUserId();
+
+      if (userId == null) throw Exception('Usuario no autenticado');
+
+      final response = await http.get(
+        Uri.parse(AppConstants.buildUrl('${AppConstants.scanDetailsEndpoint}/$userId')),
+        headers: headers,
+      ).timeout(AppConstants.timeoutNormal);
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['success'] == true) {
+          final List<dynamic> scansData = data['scans'] ?? data['data'] ?? [];
+          return scansData.map((scan) => ScanRecord.fromMap(scan)).toList();
+        }
+      }
+      throw Exception('Error al obtener historial (${response.statusCode})');
+    } catch (e) {
+      debugPrint('❌ Error en getScanHistory: $e');
+      rethrow;
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PROFILE — Perfil del usuario
+  // ═══════════════════════════════════════════════════════
+
+  /// Actualizar perfil del usuario autenticado
+  static Future<Map<String, dynamic>> updateProfile({
+    required String firstName,
+    required String lastName,
+    required String username,
+    required String email,
+    String? phone,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+
+      final response = await http.patch(
+        Uri.parse(AppConstants.buildUrl(AppConstants.userProfileEndpoint)),
+        headers: headers,
+        body: jsonEncode({
+          'first_name': firstName,
+          'last_name': lastName,
+          'username': username,
+          'email': email,
+          if (phone != null && phone.isNotEmpty) 'phone': phone,
+        }),
+      ).timeout(AppConstants.timeoutNormal);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        // Actualizar datos locales
+        final prefs = await SharedPreferences.getInstance();
+        final userData = data['data'] ?? data['user'];
+        if (userData != null) {
+          await prefs.setString(AppConstants.keyUser, jsonEncode(userData));
+          await prefs.setString(AppConstants.keyFirstName, firstName);
+          await prefs.setString(AppConstants.keyEmail, email);
+        }
+        return data;
+      } else {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Error al actualizar perfil',
+        };
+      }
+    } catch (e) {
+      debugPrint('❌ Error en updateProfile: $e');
+      return {'success': false, 'error': 'Error de conexión: $e'};
+    }
+  }
+
+  /// Cambiar contraseña
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final headers = await _authHeaders();
+
+      final response = await http.post(
+        Uri.parse(AppConstants.buildUrl(AppConstants.userPasswordEndpoint)),
+        headers: headers,
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      ).timeout(AppConstants.timeoutNormal);
+
+      final data = jsonDecode(response.body);
+      return data;
+    } catch (e) {
+      debugPrint('❌ Error en changePassword: $e');
+      return {'success': false, 'error': 'Error de conexión: $e'};
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // REWARDS — Recompensas
+  // ═══════════════════════════════════════════════════════
+
+  /// Confirmar recepción de recompensa (canjear)
+  static Future<Map<String, dynamic>> redeemReward(int rewardId) async {
+    try {
+      final headers = await _authHeaders();
+
+      final response = await http.patch(
+        Uri.parse(AppConstants.buildUrl('/rewards/$rewardId/redeem')),
+        headers: headers,
+      ).timeout(AppConstants.timeoutNormal);
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data;
+      } else {
+        return {
+          'success': false,
+          'error': data['error'] ?? 'Error al confirmar recompensa',
+        };
+      }
+    } catch (e) {
+      debugPrint('❌ Error en redeemReward: $e');
+      return {'success': false, 'error': 'Error de conexión: $e'};
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // UTILS
+  // ═══════════════════════════════════════════════════════
+
+  /// Verificar salud del servidor
+  static Future<bool> checkServerHealth() async {
+    try {
+      final response = await http.get(
+        Uri.parse(AppConstants.buildUrl(AppConstants.healthEndpoint)),
+        headers: _headers,
+      ).timeout(AppConstants.timeoutShort);
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Cerrar sesión — limpiar datos locales
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 }

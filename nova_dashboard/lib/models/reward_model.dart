@@ -1,4 +1,10 @@
 // lib/models/reward_model.dart
+// ============================================================
+// FIX: leer user_email (backend devuelve u.email AS user_email)
+// FIX: leer place_tipo (backend devuelve p.tipo AS place_tipo)
+// FIX: leer place_lugar (backend devuelve p.lugar AS place_lugar)
+// ============================================================
+
 class RewardModel {
   final int id;
   final int userId;
@@ -36,7 +42,6 @@ class RewardModel {
     this.lugar,
   });
 
-  // Crear desde JSON
   factory RewardModel.fromJson(Map<String, dynamic> json) {
     return RewardModel(
       id: json['id'] ?? 0,
@@ -50,14 +55,16 @@ class RewardModel {
       redeemedAt: json['redeemed_at'],
       firstName: json['first_name'],
       lastName: json['last_name'],
-      email: json['email'],
+      // FIX: backend devuelve u.email AS user_email
+      email: json['user_email'] ?? json['email'],
       placeName: json['place_name'],
-      placeType: json['place_type'],
-      lugar: json['lugar'],
+      // FIX: backend devuelve p.tipo AS place_tipo
+      placeType: json['place_tipo'] ?? json['place_type'],
+      // FIX: backend devuelve p.lugar AS place_lugar
+      lugar: json['place_lugar'] ?? json['lugar'],
     );
   }
 
-  // Convertir a JSON
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -78,60 +85,36 @@ class RewardModel {
     };
   }
 
-  // ============================================
-  // GETTERS Y MÉTODOS ÚTILES
-  // ============================================
-
-  /// Verificar si está canjeada
   bool get isRedeemedBool => isRedeemed == 1;
 
-  /// Nombre completo del usuario
   String get userFullName {
-    if (firstName != null && lastName != null) {
-      return '$firstName $lastName'.trim();
-    }
+    final name = [firstName, lastName]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' ')
+        .trim();
+    if (name.isNotEmpty) return name;
     return email ?? 'Usuario desconocido';
   }
 
-  /// Copiar con cambios
   RewardModel copyWith({
-    int? id,
-    int? userId,
-    int? placeId,
-    String? rewardName,
-    String? rewardDescription,
-    String? rewardIcon,
-    String? earnedAt,
-    int? isRedeemed,
-    String? redeemedAt,
-    String? firstName,
-    String? lastName,
-    String? email,
-    String? placeName,
-    String? placeType,
-    String? lugar,
+    int? id, int? userId, int? placeId, String? rewardName,
+    String? rewardDescription, String? rewardIcon, String? earnedAt,
+    int? isRedeemed, String? redeemedAt, String? firstName,
+    String? lastName, String? email, String? placeName,
+    String? placeType, String? lugar,
   }) {
     return RewardModel(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      placeId: placeId ?? this.placeId,
-      rewardName: rewardName ?? this.rewardName,
+      id: id ?? this.id, userId: userId ?? this.userId,
+      placeId: placeId ?? this.placeId, rewardName: rewardName ?? this.rewardName,
       rewardDescription: rewardDescription ?? this.rewardDescription,
-      rewardIcon: rewardIcon ?? this.rewardIcon,
-      earnedAt: earnedAt ?? this.earnedAt,
-      isRedeemed: isRedeemed ?? this.isRedeemed,
-      redeemedAt: redeemedAt ?? this.redeemedAt,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
-      email: email ?? this.email,
-      placeName: placeName ?? this.placeName,
-      placeType: placeType ?? this.placeType,
-      lugar: lugar ?? this.lugar,
+      rewardIcon: rewardIcon ?? this.rewardIcon, earnedAt: earnedAt ?? this.earnedAt,
+      isRedeemed: isRedeemed ?? this.isRedeemed, redeemedAt: redeemedAt ?? this.redeemedAt,
+      firstName: firstName ?? this.firstName, lastName: lastName ?? this.lastName,
+      email: email ?? this.email, placeName: placeName ?? this.placeName,
+      placeType: placeType ?? this.placeType, lugar: lugar ?? this.lugar,
     );
   }
 
   @override
-  String toString() {
-    return 'RewardModel(id: $id, user: $userFullName, place: $placeName, redeemed: $isRedeemedBool)';
-  }
+  String toString() => 'RewardModel(id: $id, user: $userFullName, place: $placeName, redeemed: $isRedeemedBool)';
 }
