@@ -14,7 +14,7 @@ class AppConstants {
 
   // ─── Backend ────────────────────────────────────────────
   // ⚠️ Cambiar esta IP cuando se mueva el servidor
-  static const String backendUrl = 'http://192.168.88.176:3000';
+  static const String backendUrl = 'http://192.168.2.179:3000';
 
   // ─── Endpoints AUTH ─────────────────────────────────────
   static const String loginEndpoint       = '/login';
