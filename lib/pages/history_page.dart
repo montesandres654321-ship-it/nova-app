@@ -104,15 +104,26 @@ class _HistoryPageState extends State<HistoryPage> {
     if (diff.inHours < 24) return 'Hace ${diff.inHours}h';
     if (diff.inDays == 1) return 'Ayer';
     if (diff.inDays < 7) return 'Hace ${diff.inDays} días';
-    if (diff.inDays < 30) {
-      return 'Hace ${(diff.inDays / 7).floor()} sem';
-    }
+    if (diff.inDays < 30) return 'Hace ${(diff.inDays / 7).floor()} sem';
     if (diff.inDays < 365) {
       final m = (diff.inDays / 30).floor();
       return 'Hace $m mes${m > 1 ? 'es' : ''}';
     }
     final y = (diff.inDays / 365).floor();
     return 'Hace $y año${y > 1 ? 's' : ''}';
+  }
+
+  String _dateGroup(DateTime dt) {
+    final now = DateTime.now();
+    final local = dt.toLocal();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(local.year, local.month, local.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Hoy';
+    if (diff == 1) return 'Ayer';
+    if (diff < 7) return 'Esta semana';
+    if (diff < 30) return 'Este mes';
+    return 'Anteriores';
   }
 
   // ── Build ──────────────────────────────────────────────────
@@ -155,27 +166,71 @@ class _HistoryPageState extends State<HistoryPage> {
   // ── Estados ────────────────────────────────────────────────
 
   Widget _buildLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(
+        top: AppSpacing.sm,
+        bottom: AppSpacing.xl,
+      ),
+      itemCount: 5,
+      itemBuilder: (_, __) => _buildSkeletonItem(),
+    );
+  }
+
+  Widget _buildSkeletonItem() {
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      padding: const EdgeInsets.all(AppSpacing.md),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: AppColors.border, width: 1),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(
-              color: AppColors.primary,
-              strokeWidth: 2.5,
+          _shimmerBox(44, 44, radius: AppRadius.sm),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _shimmerWide(13),
+                const SizedBox(height: 6),
+                _shimmerBox(10, 110),
+                const SizedBox(height: 6),
+                _shimmerBox(10, 72),
+              ],
             ),
           ),
-          const SizedBox(height: AppSpacing.md),
-          const Text(
-            'Cargando historial...',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-          ),
+          const SizedBox(width: AppSpacing.sm),
+          _shimmerBox(10, 50),
         ],
+      ),
+    );
+  }
+
+  Widget _shimmerBox(double height, double width, {double radius = AppRadius.sm}) {
+    return Container(
+      height: height,
+      width: width,
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(radius),
+      ),
+    );
+  }
+
+  Widget _shimmerWide(double height) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.border,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
       ),
     );
   }
@@ -189,7 +244,7 @@ class _HistoryPageState extends State<HistoryPage> {
           children: [
             Container(
               padding: const EdgeInsets.all(AppSpacing.lg),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 color: AppColors.surfaceVariant,
                 shape: BoxShape.circle,
               ),
@@ -291,39 +346,81 @@ class _HistoryPageState extends State<HistoryPage> {
   // ── Lista ──────────────────────────────────────────────────
 
   Widget _buildList() {
+    final groups = <String, List<ScanRecord>>{};
+    final groupOrder = <String>[];
+    for (final r in _records) {
+      final key = _dateGroup(r.time);
+      if (!groups.containsKey(key)) {
+        groups[key] = [];
+        groupOrder.add(key);
+      }
+      groups[key]!.add(r);
+    }
+
+    final items = <_ListItem>[];
+    for (final group in groupOrder) {
+      items.add(_ListItem.header(group));
+      for (final r in groups[group]!) {
+        items.add(_ListItem.record(r));
+      }
+    }
+
     return RefreshIndicator(
       onRefresh: _loadHistory,
       color: AppColors.primary,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(
-          top: AppSpacing.sm,
-          bottom: AppSpacing.xl,
-        ),
-        itemCount: _records.length + 1,
-        itemBuilder: (_, i) {
-          if (i == 0) return _buildListHeader();
-          return _buildScanItem(_records[i - 1]);
-        },
+      backgroundColor: AppColors.surface,
+      child: CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.only(
+              top: AppSpacing.xs,
+              bottom: AppSpacing.xl,
+            ),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (_, i) {
+                  final item = items[i];
+                  return item.isHeader
+                      ? _buildGroupHeader(item.label!)
+                      : _buildScanItem(item.record!);
+                },
+                childCount: items.length,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // Contador de registros encima del primer item
-  Widget _buildListHeader() {
+  Widget _buildGroupHeader(String label) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
-        AppSpacing.xs,
         AppSpacing.md,
-        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.xs,
       ),
-      child: Text(
-        '${_records.length} registro${_records.length != 1 ? 's' : ''}',
-        style: const TextStyle(
-          fontSize: 12,
-          color: AppColors.textHint,
-          fontWeight: FontWeight.w500,
-        ),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          const Expanded(
+            child: Divider(
+              color: AppColors.border,
+              height: 1,
+              thickness: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -340,6 +437,7 @@ class _HistoryPageState extends State<HistoryPage> {
       decoration: BoxDecoration(
         color: AppColors.surfaceVariant,
         borderRadius: AppRadius.mdAll,
+        border: Border.all(color: AppColors.border, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -370,29 +468,25 @@ class _HistoryPageState extends State<HistoryPage> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    Text(
-                      _typeLabel(r.type),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: color,
-                      ),
-                    ),
+                    _TypePill(label: _typeLabel(r.type), color: color),
                     if (r.place.isNotEmpty) ...[
-                      Text(
-                        '  ·  ',
-                        style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textHint),
+                      const SizedBox(width: AppSpacing.xs),
+                      const Text(
+                        '·',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textHint,
+                        ),
                       ),
+                      const SizedBox(width: AppSpacing.xs),
                       Expanded(
                         child: Text(
                           r.place,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
                           maxLines: 1,
@@ -402,7 +496,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     ],
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
                 Text(
                   _formatDateTime(r.time),
                   style: const TextStyle(
@@ -422,42 +516,13 @@ class _HistoryPageState extends State<HistoryPage> {
               Text(
                 _timeAgo(r.time),
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppColors.textHint,
                 ),
               ),
               if (r.hasReward) ...[
                 const SizedBox(height: AppSpacing.xs),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color:
-                        AppColors.warning.withValues(alpha: 0.12),
-                    borderRadius: AppRadius.pillAll,
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.card_giftcard_rounded,
-                        size: 10,
-                        color: AppColors.warning,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        'Premio',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.warning,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                _RewardBadge(name: r.rewardName),
               ],
             ],
           ),
@@ -465,4 +530,88 @@ class _HistoryPageState extends State<HistoryPage> {
       ),
     );
   }
+}
+
+// ── Sub-widgets ────────────────────────────────────────────
+
+class _TypePill extends StatelessWidget {
+  const _TypePill({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: AppRadius.pillAll,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _RewardBadge extends StatelessWidget {
+  const _RewardBadge({this.name});
+
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 90),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.12),
+        borderRadius: AppRadius.pillAll,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.card_giftcard_rounded,
+            size: 10,
+            color: AppColors.warning,
+          ),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              name ?? 'Premio',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: AppColors.warning,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Tipo interno para la lista flat de headers + records
+class _ListItem {
+  final bool isHeader;
+  final String? label;
+  final ScanRecord? record;
+
+  const _ListItem._({required this.isHeader, this.label, this.record});
+
+  factory _ListItem.header(String label) =>
+      _ListItem._(isHeader: true, label: label);
+
+  factory _ListItem.record(ScanRecord r) =>
+      _ListItem._(isHeader: false, record: r);
 }

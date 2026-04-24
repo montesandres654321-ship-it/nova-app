@@ -5,13 +5,11 @@ import 'package:flutter/material.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
 import 'pages/forgot_password_page.dart';
-import 'pages/home_page.dart';
+import 'pages/main_navigation_page.dart';
 import 'pages/scan_page.dart';
 import 'pages/passport_page.dart';
 import 'pages/settings_page.dart';
-import 'pages/hotels_page.dart';
-import 'pages/restaurants_page.dart';
-import 'pages/bars_page.dart';
+import 'pages/places_page.dart';
 import 'pages/history_page.dart';
 import 'pages/profile_page.dart';
 import 'pages/change_password_page.dart';
@@ -68,7 +66,7 @@ class MyApp extends StatelessWidget {
         '/': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgot-password': (context) => const ForgotPasswordPage(),
-        '/home': (context) => const HomePage(),
+        '/home': (context) => const MainNavigationPage(),
         '/scan': (context) => const ScanPage(),
         '/passport': (context) => const PassportPage(),
         '/settings': (context) => const SettingsPage(),
@@ -76,9 +74,9 @@ class MyApp extends StatelessWidget {
         '/change-password': (context) => const ChangePasswordPage(),
         '/about': (context) => const AboutPage(),
         '/history': (context) => const HistoryPage(),
-        '/hotels': (context) => const HotelsPage(),
-        '/restaurants': (context) => const RestaurantsPage(),
-        '/bars': (context) => const BarsPage(),
+        '/hotels': (context) => const PlacesPage(initialTab: 0),
+        '/restaurants': (context) => const PlacesPage(initialTab: 1),
+        '/bars': (context) => const PlacesPage(initialTab: 2),
         '/success': (context) => const SuccessPage(code: '', backendData: {}),
       },
       onUnknownRoute: (settings) {
