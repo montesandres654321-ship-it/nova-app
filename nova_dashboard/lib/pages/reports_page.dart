@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/admin_service.dart';
 import '../services/analytics_service.dart';
+import '../utils/app_theme.dart';
+import '../widgets/common/stat_card.dart';
 import '../widgets/charts/line_chart_widget.dart';
 import '../widgets/charts/bar_chart_widget.dart';
 
@@ -14,7 +16,6 @@ class ReportsPage extends StatefulWidget {
 }
 
 class _ReportsPageState extends State<ReportsPage> {
-  static const _teal = Color(0xFF06B6A4);
   final _analytics = AnalyticsService();
   bool _loading = true; bool _refreshing = false; String _error = '';
   int _selectedDays = 0;
@@ -51,26 +52,54 @@ class _ReportsPageState extends State<ReportsPage> {
 
   String get _periodLabel => _selectedDays == 0 ? 'Todo el historial' : 'Últimos $_selectedDays días';
 
+  Widget _buildPageHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spaceLG, vertical: AppTheme.spaceMD),
+      child: Row(children: [
+        Text('Reportes', style: Theme.of(context).textTheme.headlineMedium),
+        const Spacer(),
+        DropdownButton<int>(
+          value: _selectedDays,
+          underline: const SizedBox(),
+          icon: const Icon(Icons.arrow_drop_down),
+          items: _daysOptions.map((d) => DropdownMenuItem<int>(
+              value: d,
+              child: Text(d == 0 ? 'Todo el historial' : '$d días',
+                  style: const TextStyle(fontSize: 13)))).toList(),
+          onChanged: (v) {
+            if (v != null) { setState(() => _selectedDays = v); _loadData(); }
+          },
+        ),
+        _refreshing
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(width: 20, height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2)))
+            : IconButton(
+                icon: const Icon(Icons.refresh),
+                onPressed: _refresh,
+                tooltip: 'Actualizar'),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(title: const Text('Reportes', style: TextStyle(fontWeight: FontWeight.w600)),
-          backgroundColor: _teal, foregroundColor: Colors.white, elevation: 0,
-          actions: [
-            DropdownButton<int>(value: _selectedDays, dropdownColor: _teal,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-                underline: const SizedBox(), icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-                items: _daysOptions.map((d) => DropdownMenuItem<int>(value: d,
-                    child: Text(d == 0 ? 'Todo el historial' : '$d días'))).toList(),
-                onChanged: (v) { if (v != null) { setState(() => _selectedDays = v); _loadData(); } }),
-            _refreshing ? const Padding(padding: EdgeInsets.all(12),
-                child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
-                : IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh, tooltip: 'Actualizar'),
-            const SizedBox(width: 8),
-          ]),
-      body: _loading ? const Center(child: CircularProgressIndicator(color: _teal))
-          : _error.isNotEmpty ? _buildError() : _buildContent(),
+    return ColoredBox(
+      color: AppTheme.backgroundGray,
+      child: Column(children: [
+        _buildPageHeader(),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(
+                  color: AppTheme.primary))
+              : _error.isNotEmpty
+              ? _buildError()
+              : _buildContent(),
+        ),
+      ]),
     );
   }
 
@@ -87,10 +116,14 @@ class _ReportsPageState extends State<ReportsPage> {
 
   Widget _buildStatsCards(bool isWide) {
     final cards = [
-      _statCard('Total Escaneos', _totalScans, Icons.qr_code_scanner, Colors.blue),
-      _statCard('Turistas', _totalUsers, Icons.people_rounded, Colors.green),
-      _statCard('Lugares Activos', _totalPlaces, Icons.place_rounded, Colors.orange),
-      _statCard('Recompensas', _totalRewards, Icons.card_giftcard_rounded, Colors.purple),
+      StatCard(title: 'Total Escaneos', value: _totalScans.toString(),
+          icon: Icons.qr_code_scanner, color: AppTheme.info),
+      StatCard(title: 'Turistas', value: _totalUsers.toString(),
+          icon: Icons.people_rounded, color: AppTheme.success),
+      StatCard(title: 'Lugares Activos', value: _totalPlaces.toString(),
+          icon: Icons.place_rounded, color: AppTheme.warning),
+      StatCard(title: 'Recompensas', value: _totalRewards.toString(),
+          icon: Icons.card_giftcard_rounded, color: const Color(0xFF7C3AED)),
     ];
     if (isWide) {
       return IntrinsicHeight(child: Row(children: [
@@ -100,25 +133,14 @@ class _ReportsPageState extends State<ReportsPage> {
         Expanded(child: cards[3]),
       ]));
     }
-    return GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2, children: cards);
+    return GridView.count(
+      crossAxisCount: 2, shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12, crossAxisSpacing: 12,
+      childAspectRatio: 1.3,
+      children: cards,
+    );
   }
-
-  Widget _statCard(String title, int value, IconData icon, Color color) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.15)),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 3))]),
-      child: Row(children: [
-        Container(width: 36, height: 36, decoration: BoxDecoration(
-            color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: color, size: 18)),
-        const SizedBox(width: 10),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(value.toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-          Text(title, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-        ])),
-      ]));
 
   Widget _buildScansChart() {
     final chartData = _scansByDay.map((item) {
@@ -129,12 +151,12 @@ class _ReportsPageState extends State<ReportsPage> {
     return Container(decoration: _cardDec(), child: Padding(padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(width: 4, height: 20, decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(2))),
+            Container(width: 4, height: 20, decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 8),
             const Text('Actividad de Escaneos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: _teal.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
                 child: Text(_periodLabel, style: TextStyle(fontSize: 10, color: Colors.grey[600]))),
           ]),
           const SizedBox(height: 12),
@@ -142,7 +164,7 @@ class _ReportsPageState extends State<ReportsPage> {
               ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(Icons.bar_chart, size: 40, color: Colors.grey[300]), const SizedBox(height: 8),
             Text('Sin datos', style: TextStyle(color: Colors.grey[500], fontSize: 12))]))
-              : LineChartWidget(title: '', data: chartData, color: _teal, fillArea: true, height: double.infinity)),
+              : LineChartWidget(title: '', data: chartData, color: AppTheme.primary, fillArea: true, height: double.infinity)),
         ])));
   }
 
@@ -151,14 +173,14 @@ class _ReportsPageState extends State<ReportsPage> {
     return Container(decoration: _cardDec(), child: Padding(padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(width: 4, height: 20, decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(2))),
+            Container(width: 4, height: 20, decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 8),
             const Text('Top Establecimientos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
             Text('Por número de escaneos', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
           ]),
           const SizedBox(height: 8),
-          Expanded(child: BarChartWidget(title: '', data: cd, color: _teal, height: double.infinity, showValues: true)),
+          Expanded(child: BarChartWidget(title: '', data: cd, color: AppTheme.primary, height: double.infinity, showValues: true)),
         ])));
   }
 
@@ -168,5 +190,5 @@ class _ReportsPageState extends State<ReportsPage> {
     const Icon(Icons.error_outline, size: 60, color: Colors.red), const SizedBox(height: 16),
     Text(_error, textAlign: TextAlign.center), const SizedBox(height: 24),
     ElevatedButton.icon(onPressed: _loadData, icon: const Icon(Icons.refresh), label: const Text('Reintentar'),
-        style: ElevatedButton.styleFrom(backgroundColor: _teal, foregroundColor: Colors.white))]));
+        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary, foregroundColor: Colors.white))]));
 }

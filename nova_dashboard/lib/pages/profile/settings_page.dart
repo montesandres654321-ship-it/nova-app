@@ -1,6 +1,7 @@
 // lib/pages/profile/settings_page.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../utils/app_theme.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({Key? key}) : super(key: key);
@@ -47,7 +48,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Configuración'),
-        backgroundColor: Colors.teal,
+        backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
       ),
       body: ListView(
@@ -142,7 +143,7 @@ class _SettingsPageState extends State<SettingsPage> {
         style: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.bold,
-          color: Colors.teal,
+          color: AppTheme.primary,
         ),
       ),
     );
@@ -154,7 +155,7 @@ class _SettingsPageState extends State<SettingsPage> {
       subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       value: value,
       onChanged: onChanged,
-      activeColor: Colors.teal,
+      activeColor: AppTheme.primary,
     );
   }
 

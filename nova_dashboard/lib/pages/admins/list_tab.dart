@@ -11,6 +11,7 @@ import '../../models/admin_stats_model.dart';
 import '../../services/admin_service.dart';
 import '../../services/place_service.dart';
 import '../../models/place.dart';
+import '../../utils/app_theme.dart';
 import '../../widgets/common/loading_indicator.dart';
 import '../../widgets/common/empty_state.dart';
 import '../../widgets/common/error_widget.dart';
@@ -81,7 +82,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
             boxShadow: [BoxShadow(
                 color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 4)]),
         child: Row(children: [
-          const Icon(Icons.admin_panel_settings, size: 28, color: Colors.teal),
+          const Icon(Icons.admin_panel_settings, size: 28, color: AppTheme.primary),
           const SizedBox(width: 12),
           const Text('Administradores',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -92,7 +93,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
                 icon: const Icon(Icons.person_add, size: 18),
                 label: const Text('Crear usuario'),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal, foregroundColor: Colors.white,
+                    backgroundColor: AppTheme.primary, foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10))),
           const SizedBox(width: 8),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadAdmins),
@@ -138,7 +139,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
         child: Row(children: [
           _counter('Total',        total,    Colors.blue),    const SizedBox(width: 12),
           _counter('Admins',       admins,   Colors.purple),  const SizedBox(width: 12),
-          _counter('Secretaría',   generals, Colors.teal),    const SizedBox(width: 12),
+          _counter('Secretaría',   generals, AppTheme.primary),    const SizedBox(width: 12),
           _counter('Propietarios', owners,   Colors.orange),
         ]));
   }
@@ -213,7 +214,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
         context: context,
         builder: (ctx) => AlertDialog(
             title: Row(children: [
-              const Icon(Icons.edit, color: Colors.teal),
+              const Icon(Icons.edit, color: AppTheme.primary),
               const SizedBox(width: 10),
               Expanded(child: Text('Editar — ${a.admin.displayName}',
                   style: const TextStyle(fontSize: 16))),
@@ -269,7 +270,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
                     if (result['success'] == true) _loadAdmins();
                   },
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal, foregroundColor: Colors.white),
+                      backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
                   child: const Text('Guardar')),
             ]));
   }
@@ -323,7 +324,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
                         if (result['success'] == true) _loadAdmins();
                       },
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal, foregroundColor: Colors.white),
+                          backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
                       child: const Text('Asignar')),
                 ])));
   }
@@ -416,7 +417,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
         builder: (ctx) => StatefulBuilder(
             builder: (ctx, setD) => AlertDialog(
                 title: Row(children: [
-                  const Icon(Icons.person_add, color: Colors.teal),
+                  const Icon(Icons.person_add, color: AppTheme.primary),
                   const SizedBox(width: 12),
                   const Text('Crear usuario del panel'),
                   const Spacer(),
@@ -537,7 +538,7 @@ class _AdminsListTabState extends State<AdminsListTab> {
                         if (result['success'] == true) _loadAdmins();
                       },
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal, foregroundColor: Colors.white,
+                          backgroundColor: AppTheme.primary, foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12)),
                       child: isCreating
                           ? const SizedBox(width: 20, height: 20,

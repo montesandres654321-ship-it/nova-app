@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/admin_stats_model.dart';
+import '../../utils/app_theme.dart';
 
 class AdminDetailDialog extends StatelessWidget {
   final AdminStats adminStats;
@@ -28,7 +29,7 @@ class AdminDetailDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: const BoxDecoration(
-                color: Colors.teal,
+                color: AppTheme.primary,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(4),
                   topRight: Radius.circular(4),
@@ -64,7 +65,7 @@ class AdminDetailDialog extends StatelessWidget {
                     Center(
                       child: CircleAvatar(
                         radius: 40,
-                        backgroundColor: Colors.teal,
+                        backgroundColor: AppTheme.primary,
                         child: Text(
                           admin.firstName.isNotEmpty ? admin.firstName[0].toUpperCase() : 'U',
                           style: const TextStyle(
@@ -145,7 +146,7 @@ class AdminDetailDialog extends StatelessWidget {
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: Colors.teal,
+            color: AppTheme.primary,
           ),
         ),
         const SizedBox(height: 8),

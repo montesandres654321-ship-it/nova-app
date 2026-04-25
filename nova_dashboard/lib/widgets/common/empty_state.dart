@@ -1,5 +1,6 @@
 // lib/widgets/common/empty_state.dart
 import 'package:flutter/material.dart';
+import '../../utils/app_theme.dart';
 
 /// Widget de estado vacío reutilizable
 ///
@@ -71,7 +72,7 @@ class EmptyState extends StatelessWidget {
                 icon: const Icon(Icons.add),
                 label: Text(actionLabel!),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.teal,
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,

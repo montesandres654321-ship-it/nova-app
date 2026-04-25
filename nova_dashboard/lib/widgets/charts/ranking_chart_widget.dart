@@ -1,5 +1,6 @@
 // lib/widgets/charts/ranking_chart_widget.dart
 import 'package:flutter/material.dart';
+import '../../utils/app_theme.dart';
 
 /// Widget de ranking horizontal (Top N)
 class RankingChartWidget extends StatelessWidget {
@@ -14,7 +15,7 @@ class RankingChartWidget extends StatelessWidget {
     Key? key,
     required this.title,
     required this.data,
-    this.color = Colors.teal,
+    this.color = AppTheme.primary,
     this.subtitle,
     this.height = 400,
     this.maxItems,

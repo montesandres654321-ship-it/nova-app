@@ -5,6 +5,7 @@
 // ============================================================
 import 'package:flutter/material.dart';
 import '../../models/admin_stats_model.dart';
+import '../../utils/app_theme.dart';
 import '../../utils/constants.dart';
 
 class AdminCard extends StatelessWidget {
@@ -165,7 +166,7 @@ class AdminCard extends StatelessWidget {
     switch (role) {
       case AppConstants.roleAdminGeneral: return Colors.purple;
       case AppConstants.roleUserGeneral:  return Colors.blue;
-      case AppConstants.roleUserPlace:    return Colors.teal;
+      case AppConstants.roleUserPlace:    return AppTheme.primary;
       default:                            return Colors.grey;
     }
   }

@@ -20,6 +20,8 @@ import '../../widgets/charts/donut_chart_widget.dart';
 import '../../widgets/charts/bar_chart_widget.dart';
 import 'reward_dialog.dart';
 import 'place_edit_page.dart';
+import '../../utils/app_theme.dart';
+import '../../widgets/common/stat_card.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
   final String userName;
@@ -195,20 +197,20 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
           child: Row(children: [
-            Container(width: 3, height: 12, decoration: BoxDecoration(color: _amber, borderRadius: BorderRadius.circular(2))),
+            Container(width: 3, height: 14, decoration: BoxDecoration(color: _amber, borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 6),
             Text('Pendientes (${_pendingRewards.length})',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
           ]),
         ),
         Expanded(child: _pendingRewards.isEmpty
             ? Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(Icons.check_circle_outline, size: 24, color: Colors.grey[300]),
-          const SizedBox(height: 4),
-          Text('Sin pendientes', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
+          Icon(Icons.check_circle_outline, size: 28, color: Colors.grey[300]),
+          const SizedBox(height: 6),
+          Text('Sin pendientes', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
         ]))
             : ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           itemCount: _pendingRewards.length,
           itemBuilder: (_, i) {
             final r = _pendingRewards[i];
@@ -217,26 +219,26 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
             final displayName = name.isNotEmpty ? name : (r['user_email'] ?? r['username'] ?? 'Turista');
 
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(children: [
-                CircleAvatar(radius: 12, backgroundColor: _teal.withOpacity(0.1),
+                CircleAvatar(radius: 14, backgroundColor: _teal.withOpacity(0.1),
                     child: Text(displayName[0].toUpperCase(),
-                        style: const TextStyle(color: _teal, fontSize: 9, fontWeight: FontWeight.bold))),
-                const SizedBox(width: 6),
+                        style: const TextStyle(color: _teal, fontSize: 11, fontWeight: FontWeight.bold))),
+                const SizedBox(width: 8),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(displayName, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                  Text(displayName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(r['reward_name'] ?? '', style: TextStyle(fontSize: 8, color: Colors.grey[500])),
+                  Text(r['reward_name'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                 ])),
-                SizedBox(height: 24, child: ElevatedButton(
+                SizedBox(height: 30, child: ElevatedButton(
                   onPressed: () => _redeemReward(r),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _amber, foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     minimumSize: const Size(0, 0),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                   ),
-                  child: const Text('Entregar', style: TextStyle(fontSize: 9)),
+                  child: const Text('Entregar', style: TextStyle(fontSize: 11)),
                 )),
               ]),
             );
@@ -247,26 +249,18 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   }
 
   Widget _buildStatsRow() => Row(children: [
-    _stat('Visitantes', _visitors, Icons.people_rounded, _teal), const SizedBox(width: 8),
-    _stat('Escaneos', _scans, Icons.qr_code_scanner_rounded, _teal2), const SizedBox(width: 8),
-    _stat('Otorgadas', _rewards, Icons.card_giftcard_rounded, _amber), const SizedBox(width: 8),
-    _stat('Canjeadas', _redeemed, Icons.check_circle_rounded, _green),
+    Expanded(child: StatCard(title: 'Visitantes', value: _visitors.toString(),
+        icon: Icons.people_rounded, color: _teal)),
+    const SizedBox(width: 8),
+    Expanded(child: StatCard(title: 'Escaneos', value: _scans.toString(),
+        icon: Icons.qr_code_scanner_rounded, color: _teal2)),
+    const SizedBox(width: 8),
+    Expanded(child: StatCard(title: 'Otorgadas', value: _rewards.toString(),
+        icon: Icons.card_giftcard_rounded, color: _amber)),
+    const SizedBox(width: 8),
+    Expanded(child: StatCard(title: 'Canjeadas', value: _redeemed.toString(),
+        icon: Icons.check_circle_rounded, color: _green)),
   ]);
-
-  Widget _stat(String t, int v, IconData i, Color c) => Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: c.withOpacity(0.2)),
-          boxShadow: [BoxShadow(color: c.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))]),
-      child: Row(children: [
-        Container(width: 32, height: 32, decoration: BoxDecoration(color: c.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-            child: Icon(i, color: c, size: 16)),
-        const SizedBox(width: 8),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-          Text(v.toString(), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: c)),
-          Text(t, style: TextStyle(fontSize: 9, color: Colors.grey[600])),
-        ])),
-      ])));
 
   Widget _lineChart() {
     if (_scansByDay.isEmpty) return _emptyBox(Icons.show_chart, 'Sin actividad');
@@ -301,7 +295,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
           Text(_place?.rewardIcon ?? '🎁', style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 8),
           Expanded(child: Text(_place?.rewardName ?? 'Recompensa',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
         ]),
         const SizedBox(height: 6),
         Row(children: [_miniStat('$_rewards', 'dadas', _amber), const SizedBox(width: 6), _miniStat('$_redeemed', 'canje', _green)]),
@@ -309,36 +303,36 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
         InkWell(onTap: () => showDialog(context: context, builder: (_) => OwnerRewardDialog(
             currentIcon: _place?.rewardIcon, currentName: _place?.rewardName,
             currentDescription: _place?.rewardDescription, currentStock: _place?.rewardStock, onSaved: _loadAll)),
-            child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(color: _amber.withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
                 child: const Text('Editar', textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10, color: _amber, fontWeight: FontWeight.w600)))),
+                    style: TextStyle(fontSize: 12, color: _amber, fontWeight: FontWeight.w600)))),
       ]));
 
   Widget _miniStat(String v, String l, Color c) => Expanded(child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: BoxDecoration(color: c.withOpacity(0.06), borderRadius: BorderRadius.circular(6)),
       child: Column(children: [
-        Text(v, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: c)),
-        Text(l, style: TextStyle(fontSize: 8, color: Colors.grey[600])),
+        Text(v, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: c)),
+        Text(l, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ])));
 
-  Widget _qrMini() => Container(width: 100, padding: const EdgeInsets.all(8),
+  Widget _qrMini() => Container(width: 110, padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _teal.withOpacity(0.2))),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.network(
-            'https://api.qrserver.com/v1/create-qr-code/?size=60x60&data=PLACE:${_place!.id}&format=png&margin=2',
-            width: 60, height: 60, errorBuilder: (_, __, ___) => Container(width: 60, height: 60,
-            color: Colors.grey[100], child: const Icon(Icons.qr_code, size: 24, color: Colors.grey)))),
-        const SizedBox(height: 4),
-        Text('PLACE:${_place!.id}', style: const TextStyle(fontFamily: 'monospace', fontSize: 9, fontWeight: FontWeight.w700, color: _teal)),
-        const SizedBox(height: 4),
+            'https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=PLACE:${_place!.id}&format=png&margin=2',
+            width: 70, height: 70, errorBuilder: (_, __, ___) => Container(width: 70, height: 70,
+            color: Colors.grey[100], child: const Icon(Icons.qr_code, size: 28, color: Colors.grey)))),
+        const SizedBox(height: 6),
+        Text('PLACE:${_place!.id}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w700, color: _teal)),
+        const SizedBox(height: 6),
         InkWell(onTap: () => showDialog(context: context, builder: (_) => QRDialog(place: _place!)),
-            child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(6)),
                 child: const Text('Descargar', textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600)))),
+                    style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)))),
       ]));
 
   Widget _emptyBox(IconData icon, String msg) => Container(

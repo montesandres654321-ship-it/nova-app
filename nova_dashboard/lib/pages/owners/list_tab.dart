@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import '../../services/admin_service.dart';
 import '../../models/admin_model.dart';
+import '../../utils/app_theme.dart';
 
 class OwnersListTab extends StatefulWidget {
   final bool canEdit;
@@ -186,7 +187,7 @@ class _OwnersListTabState extends State<OwnersListTab> {
       const SizedBox(width: 6),
       _statChip('Admin',   admins,  Colors.purple),
       const SizedBox(width: 6),
-      _statChip('General', general, Colors.teal),
+      _statChip('General', general, AppTheme.primary),
       const SizedBox(width: 6),
       _statChip('Owners',  owners,  Colors.orange),
     ]);
@@ -214,7 +215,7 @@ class _OwnersListTabState extends State<OwnersListTab> {
   Widget _buildCard(AdminModel owner) {
     final roleColors = {
       'admin_general': Colors.purple,
-      'user_general':  Colors.teal,
+      'user_general':  AppTheme.primary,
       'user_place':    Colors.orange,
     };
     final color = roleColors[owner.role] ?? Colors.grey;

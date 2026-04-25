@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/constants.dart';
 import '../services/admin_service.dart';
-import 'home/home_tab.dart';
+import 'stats_dashboard_page.dart';
 import 'places/list_tab.dart';
 import 'admins/list_tab.dart';
 import 'users_page.dart';
@@ -81,7 +81,7 @@ class _DashboardPageState extends State<DashboardPage> {
   void _navigateToPlaces(String filter) { setState(() { _currentPlaceFilter = filter; _selectedIndex = _placesIndex; }); }
 
   List<Widget> get _pages => [
-    HomeTab(onNavigate: _navigateTo, onNavigateToPlaces: _navigateToPlaces,
+    StatsDashboardPage(onNavigate: _navigateTo, onNavigateToPlaces: _navigateToPlaces,
         placesIndex: _placesIndex, rewardsIndex: _rewardsIndex, reportsIndex: _reportsIndex),
     PlacesListTab(canEdit: _canEdit, canViewInfo: _canViewInfo,
         initialFilter: _currentPlaceFilter, key: ValueKey(_currentPlaceFilter)),

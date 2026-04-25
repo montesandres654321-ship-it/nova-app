@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import '../../services/admin_service.dart';
+import '../../utils/app_theme.dart';
 
 class ChangePasswordDialog extends StatefulWidget {
   final int userId;
@@ -96,7 +97,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.lock, color: Colors.teal, size: 28),
+                  const Icon(Icons.lock, color: AppTheme.primary, size: 28),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
@@ -176,7 +177,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                   ElevatedButton(
                     onPressed: _loading ? null : _changePassword,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                     ),

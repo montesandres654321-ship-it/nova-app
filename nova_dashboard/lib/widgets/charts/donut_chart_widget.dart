@@ -9,6 +9,7 @@
 // ============================================================
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../utils/app_theme.dart';
 
 class DonutChartWidget extends StatelessWidget {
   final String title;
@@ -272,7 +273,7 @@ class DonutChartWidget extends StatelessWidget {
       Colors.blue,
       Colors.red,
       Colors.purple,
-      Colors.teal,
+      AppTheme.primary,
     ];
     return colors[index % colors.length];
   }

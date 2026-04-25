@@ -1,6 +1,7 @@
 // lib/pages/profile/help_page.dart
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../utils/app_theme.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({Key? key}) : super(key: key);
@@ -10,7 +11,7 @@ class HelpPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ayuda y Soporte'),
-        backgroundColor: Colors.teal,
+        backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
       ),
       body: ListView(
@@ -40,21 +41,21 @@ class HelpPage extends StatelessWidget {
           const Divider(height: 32),
           _buildSection('Contacto'),
           ListTile(
-            leading: const Icon(Icons.email, color: Colors.teal),
+            leading: const Icon(Icons.email, color: AppTheme.primary),
             title: const Text('Correo de soporte'),
             subtitle: const Text('soporte@novaapp.com'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => _launchEmail('soporte@novaapp.com'),
           ),
           ListTile(
-            leading: const Icon(Icons.phone, color: Colors.teal),
+            leading: const Icon(Icons.phone, color: AppTheme.primary),
             title: const Text('Teléfono'),
             subtitle: const Text('+57 300 123 4567'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => _launchPhone('+573001234567'),
           ),
           ListTile(
-            leading: const Icon(Icons.language, color: Colors.teal),
+            leading: const Icon(Icons.language, color: AppTheme.primary),
             title: const Text('Sitio web'),
             subtitle: const Text('www.novaapp.com'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -63,14 +64,14 @@ class HelpPage extends StatelessWidget {
           const Divider(height: 32),
           _buildSection('Recursos'),
           ListTile(
-            leading: const Icon(Icons.video_library, color: Colors.teal),
+            leading: const Icon(Icons.video_library, color: AppTheme.primary),
             title: const Text('Tutoriales en video'),
             subtitle: const Text('Aprende con videos paso a paso'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
             onTap: () => _showInfo(context, 'Próximamente disponible'),
           ),
           ListTile(
-            leading: const Icon(Icons.menu_book, color: Colors.teal),
+            leading: const Icon(Icons.menu_book, color: AppTheme.primary),
             title: const Text('Manual de usuario'),
             subtitle: const Text('Guía completa del sistema'),
             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
@@ -82,7 +83,7 @@ class HelpPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                const Icon(Icons.qr_code_scanner, size: 64, color: Colors.teal),
+                const Icon(Icons.qr_code_scanner, size: 64, color: AppTheme.primary),
                 const SizedBox(height: 16),
                 const Text(
                   'Nova App Dashboard',
@@ -115,7 +116,7 @@ class HelpPage extends StatelessWidget {
         style: const TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.bold,
-          color: Colors.teal,
+          color: AppTheme.primary,
         ),
       ),
     );
@@ -123,7 +124,7 @@ class HelpPage extends StatelessWidget {
 
   Widget _buildFaqItem(String question, String answer, IconData icon) {
     return ExpansionTile(
-      leading: Icon(icon, color: Colors.teal),
+      leading: Icon(icon, color: AppTheme.primary),
       title: Text(question),
       children: [
         Padding(

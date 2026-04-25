@@ -10,7 +10,8 @@
 import 'package:flutter/material.dart';
 import '../services/admin_service.dart';
 import '../models/user_model.dart';
-import 'user_detail_page.dart';   // ← activado
+import '../utils/app_theme.dart';
+import 'user_detail_page.dart';
 
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
@@ -132,7 +133,7 @@ class _UsersPageState extends State<UsersPage> {
         context: context,
         builder: (ctx) => AlertDialog(
             title: Row(children: [
-              const Icon(Icons.edit, color: Colors.teal),
+              const Icon(Icons.edit, color: AppTheme.primary),
               const SizedBox(width: 10),
               Expanded(child: Text('Editar — ${user.displayName}',
                   style: const TextStyle(fontSize: 16))),
@@ -173,7 +174,7 @@ class _UsersPageState extends State<UsersPage> {
                   child: const Text('Cancelar')),
               ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal, foregroundColor: Colors.white),
+                      backgroundColor: AppTheme.primary, foregroundColor: Colors.white),
                   onPressed: () async {
                     Navigator.pop(ctx);
                     // Usar el nuevo endpoint PATCH /admin/users/:id
@@ -197,23 +198,30 @@ class _UsersPageState extends State<UsersPage> {
             ]));
   }
 
+  Widget _buildPageHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spaceLG, vertical: AppTheme.spaceMD),
+      child: Row(children: [
+        Text('Turistas',
+            style: Theme.of(context).textTheme.headlineMedium),
+        const Spacer(),
+        IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadUsers,
+            tooltip: 'Actualizar'),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-            title: const Text('Turistas'),
-            backgroundColor: const Color(0xFF06B6A4),
-            foregroundColor: Colors.white,
-            actions: [
-              IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: _loadUsers,
-                  tooltip: 'Actualizar'),
-            ]),
-        body: Column(children: [
+    return Column(children: [
+          _buildPageHeader(),
           // Barra de búsqueda
           Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppTheme.spaceMD),
               child: TextField(
                   decoration: InputDecoration(
                       hintText: 'Buscar turista...',
@@ -278,7 +286,7 @@ class _UsersPageState extends State<UsersPage> {
                 itemCount: _filteredUsers.length,
                 itemBuilder: (_, i) => _buildUserCard(_filteredUsers[i]),
               ))),
-        ]));
+        ]);
   }
 
   Widget _buildUserCard(UserModel user) {

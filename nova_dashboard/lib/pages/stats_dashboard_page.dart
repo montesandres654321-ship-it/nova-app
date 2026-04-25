@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/admin_service.dart';
 import '../services/analytics_service.dart';
+import '../utils/app_theme.dart';
+import '../widgets/common/stat_card.dart';
 import '../widgets/charts/line_chart_widget.dart';
 import '../widgets/charts/bar_chart_widget.dart';
 import '../widgets/charts/donut_chart_widget.dart';
@@ -25,7 +27,6 @@ class StatsDashboardPage extends StatefulWidget {
 }
 
 class _StatsDashboardPageState extends State<StatsDashboardPage> {
-  static const _teal = Color(0xFF06B6A4);
   bool _loading = true; String _error = '';
   int _selectedDays = 0;
   final List<int> _daysOptions = [7, 15, 30, 60, 90, 0];
@@ -62,25 +63,48 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
   void _goTo(int i) => widget.onNavigate?.call(i);
   String get _periodLabel => _selectedDays == 0 ? 'Todo el historial' : 'Últimos $_selectedDays días';
 
+  Widget _buildPageHeader() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppTheme.spaceLG, vertical: AppTheme.spaceMD),
+      child: Row(children: [
+        Text('Estadísticas Generales',
+            style: Theme.of(context).textTheme.headlineMedium),
+        const Spacer(),
+        DropdownButton<int>(
+          value: _selectedDays,
+          underline: const SizedBox(),
+          icon: const Icon(Icons.arrow_drop_down),
+          items: _daysOptions.map((d) => DropdownMenuItem(
+              value: d,
+              child: Text(d == 0 ? 'Todo el historial' : '$d días',
+                  style: const TextStyle(fontSize: 13)))).toList(),
+          onChanged: (v) {
+            if (v != null) { setState(() => _selectedDays = v); _load(); }
+          },
+        ),
+        IconButton(
+            icon: const Icon(Icons.refresh_rounded), onPressed: _load),
+      ]),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Estadísticas Generales', style: TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: _teal, foregroundColor: Colors.white, elevation: 0,
-        actions: [
-          DropdownButton<int>(value: _selectedDays, dropdownColor: _teal,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              underline: const SizedBox(), icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-              items: _daysOptions.map((d) => DropdownMenuItem(value: d,
-                  child: Text(d == 0 ? 'Todo el historial' : '$d días'))).toList(),
-              onChanged: (v) { if (v != null) { setState(() => _selectedDays = v); _load(); } }),
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
-        ],
-      ),
-      body: _loading ? const Center(child: CircularProgressIndicator(color: _teal))
-          : _error.isNotEmpty ? _buildError() : _buildLayout(),
+    return ColoredBox(
+      color: AppTheme.backgroundGray,
+      child: Column(children: [
+        _buildPageHeader(),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(
+                  color: AppTheme.primary))
+              : _error.isNotEmpty
+              ? _buildError()
+              : _buildLayout(),
+        ),
+      ]),
     );
   }
 
@@ -109,10 +133,18 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
 
   Widget _buildCardsRow(bool isWide) {
     final cards = [
-      _cardBody('Turistas', _totalUsers, Icons.people_rounded, const Color(0xFF2563EB), () => Navigator.of(context).pushNamed('/users')),
-      _cardBody('Lugares', _totalPlaces, Icons.place_rounded, const Color(0xFF059669), () => _goTo(widget.placesIndex)),
-      _cardBody('Escaneos', _totalScans, Icons.qr_code_scanner, const Color(0xFFD97706), () => _goTo(widget.reportsIndex)),
-      _cardBody('Recompensas', _totalRewards, Icons.card_giftcard_rounded, const Color(0xFF7C3AED), () => _goTo(widget.rewardsIndex)),
+      StatCard(title: 'Turistas', value: _totalUsers.toString(),
+          icon: Icons.people_rounded, color: const Color(0xFF2563EB),
+          onTap: () => Navigator.of(context).pushNamed('/users')),
+      StatCard(title: 'Lugares', value: _totalPlaces.toString(),
+          icon: Icons.place_rounded, color: const Color(0xFF059669),
+          onTap: () => _goTo(widget.placesIndex)),
+      StatCard(title: 'Escaneos', value: _totalScans.toString(),
+          icon: Icons.qr_code_scanner, color: const Color(0xFFD97706),
+          onTap: () => _goTo(widget.reportsIndex)),
+      StatCard(title: 'Recompensas', value: _totalRewards.toString(),
+          icon: Icons.card_giftcard_rounded, color: const Color(0xFF7C3AED),
+          onTap: () => _goTo(widget.rewardsIndex)),
     ];
     if (isWide) {
       return IntrinsicHeight(child: Row(children: [
@@ -122,27 +154,13 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
         Expanded(child: cards[3]),
       ]));
     }
-    return GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2, children: cards);
-  }
-
-  Widget _cardBody(String title, int value, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12),
-        child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withOpacity(0.15)),
-                boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 3))]),
-            child: Row(children: [
-              Container(width: 40, height: 40, decoration: BoxDecoration(
-                  color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(icon, color: color, size: 20)),
-              const SizedBox(width: 10),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-                Text(value.toString(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-              ])),
-              Icon(Icons.chevron_right_rounded, color: color.withOpacity(0.4), size: 16),
-            ])));
+    return GridView.count(
+      crossAxisCount: 2, shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12, crossAxisSpacing: 12,
+      childAspectRatio: 1.3,
+      children: cards,
+    );
   }
 
   Widget _buildScansByDayChart() {
@@ -155,18 +173,18 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
     return Container(decoration: _cardDec(), child: Padding(padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Container(width: 4, height: 20, decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(2))),
+            Container(width: 4, height: 20, decoration: BoxDecoration(color: AppTheme.primary, borderRadius: BorderRadius.circular(2))),
             const SizedBox(width: 8),
             const Text('Actividad de Escaneos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
             const Spacer(),
             Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: _teal.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
+                decoration: BoxDecoration(color: AppTheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
                 child: Text(_periodLabel, style: TextStyle(fontSize: 10, color: Colors.grey[600]))),
           ]),
           const SizedBox(height: 12),
           Expanded(child: chartData.isEmpty
               ? Center(child: Text('Sin datos', style: TextStyle(color: Colors.grey[400])))
-              : LineChartWidget(title: '', data: chartData, color: _teal, fillArea: true, height: double.infinity)),
+              : LineChartWidget(title: '', data: chartData, color: AppTheme.primary, fillArea: true, height: double.infinity)),
         ])));
   }
 
