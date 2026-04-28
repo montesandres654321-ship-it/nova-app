@@ -2,84 +2,235 @@
 // ============================================================
 // SERVICIO API CENTRALIZADO — Nova App Móvil
 // ============================================================
-// • Usa AppConstants para IP y endpoints
-// • Envía token JWT en peticiones autenticadas
-// • Parsea data['data'] (formato backend v6.0)
-// • Sin datos mock — muestra errores reales
+// Mejoras de producción aplicadas:
+//  • Motor HTTP unificado (_request) con retry inteligente
+//  • Retry solo en fallas de red / timeout (nunca en 4xx/5xx)
+//  • _handle401 con flag anti-duplicado, preparado para refresh
+//  • userId eliminado del body de /scans (JWT identifica al usuario)
+//  • Logging controlado: solo en kDebugMode
+//  • changePassword: fix bug silencioso (verificaba status pero no success)
+//  • _connectionError: type-safe (SocketException, TimeoutException)
 // ============================================================
 
+import 'dart:async' show TimeoutException;
 import 'dart:convert';
+import 'dart:io' show SocketException;
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/constants.dart';
+
 import '../models/place_model.dart';
 import '../models/scan_record.dart';
+import '../utils/constants.dart';
+import 'navigation_service.dart';
 
 class ApiService {
-  ApiService._(); // No instanciable — todos los métodos son static
-
-  // ─── Headers ────────────────────────────────────────────
-
-  /// Headers básicos sin autenticación
-  static Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-  };
-
-  /// Headers con token JWT para peticiones autenticadas
-  static Future<Map<String, String>> _authHeaders() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(AppConstants.keyToken);
-    return {
-      'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-
-  /// Obtener userId guardado
-  static Future<int?> _getUserId() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(AppConstants.keyUserId);
-  }
+  ApiService._();
 
   // ═══════════════════════════════════════════════════════
-  // AUTH — Login, Registro, Google
+  // INFRAESTRUCTURA HTTP
   // ═══════════════════════════════════════════════════════
 
-  /// Login con email y contraseña
-  static Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse(AppConstants.buildUrl(AppConstants.loginEndpoint)),
-        headers: _headers,
-        body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(AppConstants.timeoutNormal);
+  /// Máximo de reintentos automáticos.
+  /// Solo aplica a SocketException y TimeoutException — nunca a 4xx/5xx.
+  static const int _maxRetries = 2;
 
-      final data = jsonDecode(response.body);
+  /// Evita múltiples logout/redirect simultáneos cuando varios requests
+  /// reciben 401 al mismo tiempo (e.g. token expirado con llamadas paralelas).
+  static bool _isRefreshing = false;
 
-      if (response.statusCode == 200 && data['success'] == true) {
-        // Backend devuelve: { success, data: { token, user } }
-        final inner = data['data'] ?? data;
-        await _saveAuthData(inner);
-        // Retornar aplanado para que login_page lea data['user'] y data['token'] fácil
-        return {
-          'success': true,
-          'token': inner['token'],
-          'user': inner['user'],
-        };
-      } else {
-        return {
-          'success': false,
-          'error': data['error'] ?? 'Error en login (${response.statusCode})',
-        };
+  // ─── Motor HTTP unificado ────────────────────────────────
+
+  /// Ejecuta un request HTTP con:
+  ///  - Headers de autenticación si [requiresAuth] es true
+  ///  - Timeout configurable (default: AppConstants.timeoutNormal)
+  ///  - Retry automático en [SocketException] y [TimeoutException]
+  ///  - Detección y manejo de 401 en rutas protegidas
+  ///
+  /// No reintenta en respuestas 4xx ni 5xx (errores de lógica/servidor).
+  static Future<http.Response> _request({
+    required String method,
+    required String endpoint,
+    Map<String, dynamic>? body,
+    bool requiresAuth = false,
+    Duration? timeout,
+  }) async {
+    // Build headers — auth check local evita request innecesaria sin token
+    final Map<String, String> headers;
+    if (requiresAuth) {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(AppConstants.keyToken);
+      if (token == null) {
+        // Sin token local → tratar como 401 inmediatamente
+        await _handle401();
+        return http.Response('{"error":"Sin sesión activa"}', 401);
       }
-    } catch (e) {
-      debugPrint('❌ Error en login: $e');
-      return {'success': false, 'error': 'Error de conexión: $e'};
+      headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+    } else {
+      headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+    }
+
+    final uri          = Uri.parse(AppConstants.buildUrl(endpoint));
+    final effectiveTO  = timeout ?? AppConstants.timeoutNormal;
+    final encodedBody  = body != null ? jsonEncode(body) : null;
+
+    _log('→ $method $endpoint');
+
+    // ─── Retry loop ───────────────────────────────────────
+    int attempt = 0;
+    while (true) {
+      try {
+        final response = await _execute(method, uri, headers, encodedBody)
+            .timeout(effectiveTO);
+
+        _log('← ${response.statusCode} $endpoint');
+
+        // 401 en ruta protegida → handle central (redirect a login)
+        if (response.statusCode == 401 && requiresAuth) {
+          await _handle401();
+        }
+
+        return response;
+
+      } on SocketException {
+        // Red caída — reintentar con backoff exponencial simple
+        if (++attempt > _maxRetries) {
+          _log('✗ $method $endpoint [sin red tras $attempt intentos]');
+          rethrow;
+        }
+        _log('↻ Reintento $attempt/$_maxRetries $method $endpoint [sin red]');
+        await Future.delayed(Duration(seconds: attempt));
+
+      } on TimeoutException {
+        // Request superó el timeout — reintentar
+        if (++attempt > _maxRetries) {
+          _log('✗ $method $endpoint [timeout tras $attempt intentos]');
+          rethrow;
+        }
+        _log('↻ Reintento $attempt/$_maxRetries $method $endpoint [timeout]');
+        await Future.delayed(Duration(seconds: attempt));
+      }
+      // Cualquier otra excepción (FormatException, etc.) propaga inmediatamente
     }
   }
 
-  /// Registro de nuevo usuario
+  /// Despacha al método HTTP correspondiente.
+  static Future<http.Response> _execute(
+    String method,
+    Uri uri,
+    Map<String, String> headers,
+    String? body,
+  ) {
+    switch (method) {
+      case 'GET':
+        return http.get(uri, headers: headers);
+      case 'POST':
+        return http.post(uri, headers: headers, body: body);
+      case 'PATCH':
+        return http.patch(uri, headers: headers, body: body);
+      case 'DELETE':
+        return http.delete(uri, headers: headers);
+      default:
+        throw ArgumentError('Método HTTP no soportado: $method');
+    }
+  }
+
+  // ─── 401 Handler ─────────────────────────────────────────
+
+  /// Maneja una sesión expirada o token inválido.
+  ///
+  /// El flag [_isRefreshing] previene múltiples redirects simultáneos.
+  /// Estructura preparada para implementar refresh token en el futuro:
+  ///   1. Intentar refrescar el token
+  ///   2. Si falla → logout + redirect a login
+  static Future<void> _handle401() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
+    try {
+      // FUTURE: intentar refresh token aquí antes de desloguear
+      // final refreshed = await _tryRefreshToken();
+      // if (refreshed) return;
+      await logout();
+      NavigationService.goToLogin();
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────
+
+  /// Log solo en modo debug. No imprime nada en release.
+  static void _log(String message) {
+    if (kDebugMode) debugPrint('[ApiService] $message');
+  }
+
+  /// Mensaje de error amigable según código HTTP.
+  static String _statusMessage(int code, String fallback) {
+    switch (code) {
+      case 400: return 'Solicitud inválida.';
+      case 401: return 'Sesión expirada. Por favor, inicia sesión de nuevo.';
+      case 403: return 'Acceso denegado.';
+      case 404: return 'Recurso no encontrado.';
+      case 409: return 'Conflicto con datos existentes.';
+      case 422: return 'Datos inválidos.';
+      case 500:
+      case 502:
+      case 503: return 'Error en el servidor. Intenta más tarde.';
+      default:  return fallback;
+    }
+  }
+
+  /// Traduce excepciones de red/timeout a mensajes legibles.
+  /// Usa type-safe matching (no string.contains).
+  static String _connectionError(Object e) {
+    if (e is SocketException)  return 'Sin conexión. Verifica tu red.';
+    if (e is TimeoutException) return 'Tiempo de espera agotado. Intenta de nuevo.';
+    if (e is FormatException)  return 'Respuesta inesperada del servidor.';
+    return 'Error de conexión.';
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // AUTH — Login / Registro
+  // ═══════════════════════════════════════════════════════
+
+  /// POST /login → { success, token, user }
+  static Future<Map<String, dynamic>> login(String email, String password) async {
+    try {
+      final response = await _request(
+        method: 'POST',
+        endpoint: AppConstants.loginEndpoint,
+        body: {'email': email, 'password': password},
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        final inner = data['data'] ?? data;
+        await _saveAuthData(inner);
+        return {
+          'success': true,
+          'token': inner['token'],
+          'user':  inner['user'],
+        };
+      }
+      return {
+        'success': false,
+        'error': data['error'] ?? _statusMessage(response.statusCode, 'Error en login'),
+      };
+    } catch (e) {
+      _log('✗ login: $e');
+      return {'success': false, 'error': _connectionError(e)};
+    }
+  }
+
+  /// POST /users/register
   static Future<Map<String, dynamic>> register({
     required String firstName,
     required String lastName,
@@ -92,150 +243,145 @@ class ApiService {
     required bool acceptedTerms,
   }) async {
     try {
-      final response = await http.post(
-        Uri.parse(AppConstants.buildUrl(AppConstants.registerEndpoint)),
-        headers: _headers,
-        body: jsonEncode({
-          'firstName': firstName,
-          'lastName': lastName,
-          'username': username,
-          'email': email,
-          'password': password,
-          'phone': phone,
-          'dob': dob,
-          'gender': gender,
+      final response = await _request(
+        method: 'POST',
+        endpoint: AppConstants.registerEndpoint,
+        body: {
+          'firstName':      firstName,
+          'lastName':       lastName,
+          'username':       username,
+          'email':          email,
+          'password':       password,
+          'phone':          phone,
+          'dob':            dob,
+          'gender':         gender,
           'accepted_terms': acceptedTerms ? 1 : 0,
-        }),
-      ).timeout(AppConstants.timeoutNormal);
+        },
+      );
 
       final data = jsonDecode(response.body);
-
-      if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
-        // Backend devuelve: { success, data: { token, user } }
+      if ((response.statusCode == 200 || response.statusCode == 201) &&
+          data['success'] == true) {
         final inner = data['data'] ?? data;
         await _saveAuthData(inner);
         return {'success': true, 'token': inner['token'], 'user': inner['user']};
-      } else {
-        return {
-          'success': false,
-          'error': data['error'] ?? 'Error en registro (${response.statusCode})',
-        };
       }
+      return {
+        'success': false,
+        'error': data['error'] ?? _statusMessage(response.statusCode, 'Error en registro'),
+      };
     } catch (e) {
-      debugPrint('❌ Error en register: $e');
-      return {'success': false, 'error': 'Error de conexión: $e'};
+      _log('✗ register: $e');
+      return {'success': false, 'error': _connectionError(e)};
     }
   }
 
-  /// Guardar token y datos del usuario tras login exitoso
   static Future<void> _saveAuthData(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
     final token = data['token'];
-    final user = data['user'];
+    final user  = data['user'];
 
-    if (token != null) {
-      await prefs.setString(AppConstants.keyToken, token);
-    }
+    if (token != null) await prefs.setString(AppConstants.keyToken, token);
     if (user != null) {
       await prefs.setString(AppConstants.keyUser, jsonEncode(user));
-      if (user['id'] != null) await prefs.setInt(AppConstants.keyUserId, user['id']);
-      if (user['username'] != null) await prefs.setString(AppConstants.keyUsername, user['username']);
-      if (user['email'] != null) await prefs.setString(AppConstants.keyEmail, user['email']);
+      if (user['id']         != null) await prefs.setInt(AppConstants.keyUserId, user['id']);
+      if (user['username']   != null) await prefs.setString(AppConstants.keyUsername, user['username']);
+      if (user['email']      != null) await prefs.setString(AppConstants.keyEmail, user['email']);
       if (user['first_name'] != null) await prefs.setString(AppConstants.keyFirstName, user['first_name']);
     }
   }
 
+  /// Limpia token y datos de sesión locales.
+  static Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+  }
+
   // ═══════════════════════════════════════════════════════
-  // PLACES — Obtener lugares
+  // PLACES — GET /places  (públicos, sin auth)
   // ═══════════════════════════════════════════════════════
 
-  /// Obtener todos los lugares activos
+  /// GET /places → lista completa de lugares activos
   static Future<List<Place>> getAllPlaces() async {
     try {
-      final response = await http.get(
-        Uri.parse(AppConstants.buildUrl(AppConstants.placesEndpoint)),
-        headers: _headers,
-      ).timeout(AppConstants.timeoutLong);
-
+      final response = await _request(
+        method: 'GET',
+        endpoint: AppConstants.placesEndpoint,
+        timeout: AppConstants.timeoutLong,
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           final List<dynamic> list = data['data'] ?? [];
-          return list.map((json) => Place.fromJson(json)).toList();
+          return list.map((j) => Place.fromJson(j)).toList();
         }
       }
-      throw Exception('Error al cargar lugares (${response.statusCode})');
+      throw Exception(_statusMessage(response.statusCode, 'Error al cargar lugares'));
     } catch (e) {
-      debugPrint('❌ Error en getAllPlaces: $e');
+      _log('✗ getAllPlaces: $e');
       rethrow;
     }
   }
 
-  /// Obtener lugares por tipo (hotel, restaurant, bar)
+  /// Alias explícito — mismo contrato que getAllPlaces
+  static Future<List<Place>> getPlaces() => getAllPlaces();
+
+  /// GET /places/type/:type
   static Future<List<Place>> getPlacesByType(String type) async {
     try {
-      final response = await http.get(
-        Uri.parse(AppConstants.buildUrl('${AppConstants.placesByTypeEndpoint}/$type')),
-        headers: _headers,
-      ).timeout(AppConstants.timeoutLong);
-
+      final response = await _request(
+        method: 'GET',
+        endpoint: '${AppConstants.placesByTypeEndpoint}/$type',
+        timeout: AppConstants.timeoutLong,
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['success'] == true) {
           final List<dynamic> list = data['data'] ?? [];
-          return list.map((json) => Place.fromJson(json)).toList();
+          return list.map((j) => Place.fromJson(j)).toList();
         }
       }
-      throw Exception('Error al cargar $type (${response.statusCode})');
+      throw Exception(_statusMessage(response.statusCode, 'Error al cargar $type'));
     } catch (e) {
-      debugPrint('❌ Error en getPlacesByType ($type): $e');
+      _log('✗ getPlacesByType($type): $e');
       rethrow;
     }
   }
 
-  /// Obtener lugar por ID
+  /// GET /places/:id
   static Future<Place> getPlaceById(int id) async {
     try {
-      final response = await http.get(
-        Uri.parse(AppConstants.buildUrl('${AppConstants.placeByIdEndpoint}/$id')),
-        headers: _headers,
-      ).timeout(AppConstants.timeoutNormal);
-
+      final response = await _request(
+        method: 'GET',
+        endpoint: '${AppConstants.placeByIdEndpoint}/$id',
+      );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          return Place.fromJson(data['data']);
-        }
+        if (data['success'] == true) return Place.fromJson(data['data']);
       }
-      throw Exception('Lugar no encontrado');
+      throw Exception(_statusMessage(response.statusCode, 'Lugar no encontrado'));
     } catch (e) {
-      debugPrint('❌ Error en getPlaceById: $e');
+      _log('✗ getPlaceById($id): $e');
       rethrow;
     }
   }
 
-  // Shortcuts
-  static Future<List<Place>> getHotels() => getPlacesByType('hotel');
+  // Shortcuts por tipo
+  static Future<List<Place>> getHotels()      => getPlacesByType('hotel');
   static Future<List<Place>> getRestaurants() => getPlacesByType('restaurant');
-  static Future<List<Place>> getBars() => getPlacesByType('bar');
+  static Future<List<Place>> getBars()        => getPlacesByType('bar');
 
   // ═══════════════════════════════════════════════════════
-  // SCAN — Escaneo QR
+  // SCAN — POST /scans  (protegido con JWT)
   // ═══════════════════════════════════════════════════════
 
-  /// Registrar escaneo de código QR
+  /// POST /scans — registra el escaneo.
+  /// El backend obtiene userId del JWT — NO se incluye en el body.
   static Future<Map<String, dynamic>> registerScan(String qrCode) async {
     try {
-      final headers = await _authHeaders();
-      final userId = await _getUserId();
-
-      if (userId == null) {
-        return {'success': false, 'error': 'Usuario no autenticado'};
-      }
-
-      // Extraer placeId del QR (formato: PLACE:1)
+      // Validación local del formato antes de hacer el request
       final parts = qrCode.split(':');
-      if (parts.length != 2) {
+      if (parts.length != 2 || parts[0] != 'PLACE') {
         return {'success': false, 'error': 'Formato QR inválido: $qrCode'};
       }
       final placeId = int.tryParse(parts[1]);
@@ -243,100 +389,162 @@ class ApiService {
         return {'success': false, 'error': 'ID de lugar inválido: ${parts[1]}'};
       }
 
-      final response = await http.post(
-        Uri.parse(AppConstants.buildUrl(AppConstants.scanEndpoint)),
-        headers: headers,
-        body: jsonEncode({
-          'userId': userId,
+      final response = await _request(
+        method: 'POST',
+        endpoint: AppConstants.scanEndpoint,
+        body: {
           'placeId': placeId,
-          'qrCode': qrCode,
-        }),
-      ).timeout(AppConstants.timeoutNormal);
+          'qrCode':  qrCode,
+          // userId viene del JWT — no se envía explícitamente
+        },
+        requiresAuth: true,
+      );
+
+      if (response.statusCode == 401) {
+        return {'success': false, 'error': 'Sesión expirada'};
+      }
 
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200 && data['success'] == true) {
-        // Backend devuelve: { success, data: { scan_id, place, reward, ... } }
-        // success_page.dart lee backendData['place'] y backendData['reward']
         final inner = data['data'] ?? {};
         return {
-          'success': true,
-          'place': inner['place'],
-          'reward': inner['reward'],
+          'success':     true,
+          'place':       inner['place'],
+          'reward':      inner['reward'],
           'visit_count': inner['visit_count'],
-          'message': inner['message'] ?? data['message'],
-        };
-      } else {
-        return {
-          'success': false,
-          'error': data['error'] ?? 'Error al registrar escaneo (${response.statusCode})',
+          'message':     inner['message'] ?? data['message'],
         };
       }
+      return {
+        'success': false,
+        'error': data['error'] ??
+            _statusMessage(response.statusCode, 'Error al registrar escaneo'),
+      };
     } catch (e) {
-      debugPrint('❌ Error en registerScan: $e');
-      return {'success': false, 'error': 'Error de conexión: $e'};
+      _log('✗ registerScan: $e');
+      return {'success': false, 'error': _connectionError(e)};
     }
   }
 
-  /// Validar código QR sin registrar
+  /// Alias explícito requerido por el contrato
+  static Future<Map<String, dynamic>> scanQR(String qrData) =>
+      registerScan(qrData);
+
+  /// POST /qr/validate — valida formato sin registrar
   static Future<Map<String, dynamic>> validateQR(String qrData) async {
     try {
       if (!qrData.startsWith('PLACE:')) {
         return {'valid': false, 'error': 'Formato QR inválido'};
       }
-
-      final response = await http.post(
-        Uri.parse(AppConstants.buildUrl(AppConstants.qrValidateEndpoint)),
-        headers: _headers,
-        body: jsonEncode({'qrData': qrData}),
-      ).timeout(AppConstants.timeoutNormal);
-
-      if (response.statusCode == 200) {
-        return jsonDecode(response.body);
-      }
-      throw Exception('Error validando QR (${response.statusCode})');
+      final response = await _request(
+        method: 'POST',
+        endpoint: AppConstants.qrValidateEndpoint,
+        body: {'qrData': qrData},
+      );
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      throw Exception(_statusMessage(response.statusCode, 'Error validando QR'));
     } catch (e) {
-      debugPrint('❌ Error en validateQR: $e');
+      _log('✗ validateQR: $e');
       rethrow;
     }
   }
 
   // ═══════════════════════════════════════════════════════
-  // HISTORY — Historial de escaneos
+  // HISTORY — GET /scans/my-history  (protegido con JWT)
   // ═══════════════════════════════════════════════════════
 
-  /// Obtener historial de escaneos del usuario
+  /// GET /scans/my-history — historial del usuario autenticado.
+  /// El backend identifica al usuario por JWT (sin userId en la URL).
   static Future<List<ScanRecord>> getScanHistory() async {
     try {
-      final headers = await _authHeaders();
-      final userId = await _getUserId();
+      final response = await _request(
+        method: 'GET',
+        endpoint: AppConstants.myHistoryEndpoint,
+        requiresAuth: true,
+      );
 
-      if (userId == null) throw Exception('Usuario no autenticado');
-
-      final response = await http.get(
-        Uri.parse(AppConstants.buildUrl('${AppConstants.scanDetailsEndpoint}/$userId')),
-        headers: headers,
-      ).timeout(AppConstants.timeoutNormal);
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['success'] == true) {
-          final List<dynamic> scansData = data['scans'] ?? data['data'] ?? [];
-          return scansData.map((scan) => ScanRecord.fromMap(scan)).toList();
-        }
+      if (response.statusCode == 401) throw Exception('Sesión expirada');
+      if (response.statusCode != 200) {
+        throw Exception(
+            _statusMessage(response.statusCode, 'Error al obtener historial'));
       }
-      throw Exception('Error al obtener historial (${response.statusCode})');
+
+      final data = jsonDecode(response.body);
+      if (data['success'] != true) {
+        throw Exception(data['error'] ?? 'Error al obtener historial');
+      }
+
+      final List<dynamic> scansData = data['scans'] ?? data['data'] ?? [];
+      return scansData.map((scan) => ScanRecord.fromMap(scan)).toList();
     } catch (e) {
-      debugPrint('❌ Error en getScanHistory: $e');
+      _log('✗ getScanHistory: $e');
       rethrow;
     }
   }
 
   // ═══════════════════════════════════════════════════════
-  // PROFILE — Perfil del usuario
+  // REWARDS — protegido con JWT
   // ═══════════════════════════════════════════════════════
 
-  /// Actualizar perfil del usuario autenticado
+  /// GET /rewards/my-rewards — recompensas del usuario autenticado
+  static Future<Map<String, dynamic>> getMyRewards() async {
+    try {
+      final response = await _request(
+        method: 'GET',
+        endpoint: AppConstants.myRewardsEndpoint,
+        requiresAuth: true,
+      );
+
+      if (response.statusCode == 401) {
+        return {'success': false, 'error': 'Sesión expirada'};
+      }
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data; // { success, data: [...rewards] }
+      }
+      return {
+        'success': false,
+        'error': data['error'] ??
+            _statusMessage(response.statusCode, 'Error al obtener recompensas'),
+      };
+    } catch (e) {
+      _log('✗ getMyRewards: $e');
+      return {'success': false, 'error': _connectionError(e)};
+    }
+  }
+
+  /// PATCH /rewards/:id/redeem — confirmar recepción de recompensa
+  static Future<Map<String, dynamic>> redeemReward(int rewardId) async {
+    try {
+      final response = await _request(
+        method: 'PATCH',
+        endpoint: '/rewards/$rewardId/redeem',
+        requiresAuth: true,
+      );
+
+      if (response.statusCode == 401) {
+        return {'success': false, 'error': 'Sesión expirada'};
+      }
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) return data;
+      return {
+        'success': false,
+        'error': data['error'] ??
+            _statusMessage(response.statusCode, 'Error al confirmar recompensa'),
+      };
+    } catch (e) {
+      _log('✗ redeemReward($rewardId): $e');
+      return {'success': false, 'error': _connectionError(e)};
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // PROFILE — protegido con JWT
+  // ═══════════════════════════════════════════════════════
+
+  /// PATCH /users/me/profile
   static Future<Map<String, dynamic>> updateProfile({
     required String firstName,
     required String lastName,
@@ -345,25 +553,27 @@ class ApiService {
     String? phone,
   }) async {
     try {
-      final headers = await _authHeaders();
-
-      final response = await http.patch(
-        Uri.parse(AppConstants.buildUrl(AppConstants.userProfileEndpoint)),
-        headers: headers,
-        body: jsonEncode({
+      final response = await _request(
+        method: 'PATCH',
+        endpoint: AppConstants.userProfileEndpoint,
+        body: {
           'first_name': firstName,
-          'last_name': lastName,
-          'username': username,
-          'email': email,
+          'last_name':  lastName,
+          'username':   username,
+          'email':      email,
           if (phone != null && phone.isNotEmpty) 'phone': phone,
-        }),
-      ).timeout(AppConstants.timeoutNormal);
+        },
+        requiresAuth: true,
+      );
+
+      if (response.statusCode == 401) {
+        return {'success': false, 'error': 'Sesión expirada'};
+      }
 
       final data = jsonDecode(response.body);
-
       if (response.statusCode == 200 && data['success'] == true) {
-        // Actualizar datos locales
-        final prefs = await SharedPreferences.getInstance();
+        // Actualizar caché local
+        final prefs    = await SharedPreferences.getInstance();
         final userData = data['data'] ?? data['user'];
         if (userData != null) {
           await prefs.setString(AppConstants.keyUser, jsonEncode(userData));
@@ -371,70 +581,50 @@ class ApiService {
           await prefs.setString(AppConstants.keyEmail, email);
         }
         return data;
-      } else {
-        return {
-          'success': false,
-          'error': data['error'] ?? 'Error al actualizar perfil',
-        };
       }
+      return {
+        'success': false,
+        'error': data['error'] ??
+            _statusMessage(response.statusCode, 'Error al actualizar perfil'),
+      };
     } catch (e) {
-      debugPrint('❌ Error en updateProfile: $e');
-      return {'success': false, 'error': 'Error de conexión: $e'};
+      _log('✗ updateProfile: $e');
+      return {'success': false, 'error': _connectionError(e)};
     }
   }
 
-  /// Cambiar contraseña
+  /// POST /users/me/password
   static Future<Map<String, dynamic>> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
     try {
-      final headers = await _authHeaders();
-
-      final response = await http.post(
-        Uri.parse(AppConstants.buildUrl(AppConstants.userPasswordEndpoint)),
-        headers: headers,
-        body: jsonEncode({
+      final response = await _request(
+        method: 'POST',
+        endpoint: AppConstants.userPasswordEndpoint,
+        body: {
           'current_password': currentPassword,
-          'new_password': newPassword,
-        }),
-      ).timeout(AppConstants.timeoutNormal);
+          'new_password':     newPassword,
+        },
+        requiresAuth: true,
+      );
 
-      final data = jsonDecode(response.body);
-      return data;
-    } catch (e) {
-      debugPrint('❌ Error en changePassword: $e');
-      return {'success': false, 'error': 'Error de conexión: $e'};
-    }
-  }
-
-  // ═══════════════════════════════════════════════════════
-  // REWARDS — Recompensas
-  // ═══════════════════════════════════════════════════════
-
-  /// Confirmar recepción de recompensa (canjear)
-  static Future<Map<String, dynamic>> redeemReward(int rewardId) async {
-    try {
-      final headers = await _authHeaders();
-
-      final response = await http.patch(
-        Uri.parse(AppConstants.buildUrl('/rewards/$rewardId/redeem')),
-        headers: headers,
-      ).timeout(AppConstants.timeoutNormal);
-
-      final data = jsonDecode(response.body);
-
-      if (response.statusCode == 200 && data['success'] == true) {
-        return data;
-      } else {
-        return {
-          'success': false,
-          'error': data['error'] ?? 'Error al confirmar recompensa',
-        };
+      if (response.statusCode == 401) {
+        return {'success': false, 'error': 'Sesión expirada'};
       }
+
+      final data = jsonDecode(response.body);
+      // FIX: verificar data['success'] además del statusCode.
+      // Antes solo chequeaba statusCode 200, ignorando { success: false } con 200.
+      if (response.statusCode == 200 && data['success'] == true) return data;
+      return {
+        'success': false,
+        'error': data['error'] ??
+            _statusMessage(response.statusCode, 'Error al cambiar contraseña'),
+      };
     } catch (e) {
-      debugPrint('❌ Error en redeemReward: $e');
-      return {'success': false, 'error': 'Error de conexión: $e'};
+      _log('✗ changePassword: $e');
+      return {'success': false, 'error': _connectionError(e)};
     }
   }
 
@@ -442,22 +632,18 @@ class ApiService {
   // UTILS
   // ═══════════════════════════════════════════════════════
 
-  /// Verificar salud del servidor
+  /// GET /health — ping rápido sin retry (falla rápido si servidor caído).
   static Future<bool> checkServerHealth() async {
     try {
-      final response = await http.get(
-        Uri.parse(AppConstants.buildUrl(AppConstants.healthEndpoint)),
-        headers: _headers,
-      ).timeout(AppConstants.timeoutShort);
+      final response = await http
+          .get(
+            Uri.parse(AppConstants.buildUrl(AppConstants.healthEndpoint)),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(AppConstants.timeoutShort);
       return response.statusCode == 200;
-    } catch (e) {
+    } catch (_) {
       return false;
     }
-  }
-
-  /// Cerrar sesión — limpiar datos locales
-  static Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
   }
 }

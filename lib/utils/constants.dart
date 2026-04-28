@@ -14,7 +14,7 @@ class AppConstants {
 
   // ─── Backend ────────────────────────────────────────────
   // ⚠️ Cambiar esta IP cuando se mueva el servidor
-  static const String backendUrl = 'http://192.168.18.6:3000';
+  static const String backendUrl = 'http://192.168.2.179:3000';
 
   // ─── Endpoints AUTH ─────────────────────────────────────
   static const String loginEndpoint       = '/login';
@@ -27,14 +27,14 @@ class AppConstants {
   static const String placeByIdEndpoint   = '/places';       // + /{id}
 
   // ─── Endpoints SCAN ─────────────────────────────────────
-  static const String scanEndpoint        = '/scan';
-  static const String scanDetailsEndpoint = '/scans/details'; // + /{userId}
-  static const String qrValidateEndpoint  = '/qr/validate';
+  static const String scanEndpoint      = '/scans';
+  static const String myHistoryEndpoint = '/scans/my-history';
+  static const String qrValidateEndpoint = '/qr/validate';
 
   // ─── Endpoints USER ─────────────────────────────────────
   static const String userProfileEndpoint  = '/users/me/profile';
   static const String userPasswordEndpoint = '/users/me/password';
-  static const String userRewardsEndpoint  = '/rewards/user'; // + /{userId}
+  static const String myRewardsEndpoint    = '/rewards/my-rewards';
 
   // ─── Endpoints HEALTH ───────────────────────────────────
   static const String healthEndpoint = '/health';
