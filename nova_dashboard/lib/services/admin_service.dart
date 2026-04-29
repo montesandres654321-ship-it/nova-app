@@ -1,11 +1,6 @@
 // lib/services/admin_service.dart
 // ============================================================
-// CAMBIOS:
-//   1. getMyPlaceStats(placeId) — acepta placeId opcional
-//      Si se pasa, envía ?place_id=X al backend (para admin viendo otro)
-//   2. getMyPlaceScans(placeId) — idem
-//   3. getMyPlaceVisitors(placeId) — idem
-//   Todo lo demás sin cambios
+// FIX: getDashboardStats() ahora incluye scansByDay en el return
 // ============================================================
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -163,16 +158,13 @@ class AdminService {
   }
 
   // ─── ESTADÍSTICAS DASHBOARD ────────────────────────────
+  // FIX: ahora incluye scansByDay en el return
   static Future<Map<String, dynamic>> getDashboardStats() async {
     try {
       final r = await ApiClient.get<dynamic>('/stats/dashboard');
       final d = r.data;
       if (d is! Map<String, dynamic>) throw ApiException('Formato inválido');
 
-      // Normaliza cualquier formato que devuelva el backend:
-      //   { stats: { users, places, scans, rewards } }
-      //   { users, places, scans, rewards }           (plano)
-      //   { totalUsers, totalPlaces, ... }            (camelCase)
       final raw = d['stats'] as Map<String, dynamic>? ?? d;
 
       return {
@@ -183,6 +175,7 @@ class AdminService {
           'scans':   _toInt(raw['scans']   ?? raw['totalScans']   ?? d['totalScans']),
           'rewards': _toInt(raw['rewards'] ?? raw['totalRewards'] ?? d['totalRewards']),
         },
+        'scansByDay':   d['scansByDay']   ?? [],   // ← FIX: ahora incluye scansByDay
         'topPlaces':    d['topPlaces']    ?? [],
         'placesByType': d['placesByType'] ?? {},
       };
@@ -192,6 +185,7 @@ class AdminService {
         'success': false,
         'error': e.toString(),
         'stats': {'users': 0, 'places': 0, 'scans': 0, 'rewards': 0},
+        'scansByDay': [],   // ← FIX: también en el fallback
         'topPlaces': [],
         'placesByType': {},
       };
@@ -201,7 +195,6 @@ class AdminService {
   static int _toInt(dynamic v) => v is num ? v.toInt() : 0;
 
   // ─── ESTADÍSTICAS MI LUGAR (user_place) ────────────────
-  // FIX: acepta placeId opcional — para que admin vea datos de otro propietario
   static Future<Map<String, dynamic>> getMyPlaceStats({int? placeId}) async {
     try {
       final queryParam = placeId != null ? '?place_id=$placeId' : '';
@@ -227,7 +220,6 @@ class AdminService {
     }
   }
 
-  // FIX: acepta placeId opcional
   static Future<Map<String, dynamic>> getMyPlaceScans({int? placeId}) async {
     try {
       final queryParam = placeId != null ? '?place_id=$placeId' : '';
@@ -242,7 +234,6 @@ class AdminService {
     }
   }
 
-  // FIX: acepta placeId opcional
   static Future<Map<String, dynamic>> getMyPlaceVisitors({int? placeId}) async {
     try {
       final queryParam = placeId != null ? '?place_id=$placeId' : '';
@@ -257,17 +248,14 @@ class AdminService {
     }
   }
 
-  // ─── PERFIL PROPIO (cualquier rol) ────────────────────
+  // ─── PERFIL PROPIO ─────────────────────────────────────
   static Future<Map<String, dynamic>> updateMyProfile({
     required String firstName,
     required String lastName,
     String? phone,
   }) async {
     try {
-      final body = <String, dynamic>{
-        'first_name': firstName,
-        'last_name':  lastName,
-      };
+      final body = <String, dynamic>{'first_name': firstName, 'last_name': lastName};
       if (phone != null) body['phone'] = phone;
       await ApiClient.patch<dynamic>('/users/me/profile', body: body);
       return {'success': true, 'message': 'Perfil actualizado correctamente'};
@@ -295,7 +283,7 @@ class AdminService {
     }
   }
 
-  // ─── EDITAR PERFIL DE OTRO USUARIO (solo admin_general) ──
+  // ─── EDITAR PERFIL DE OTRO USUARIO ─────────────────────
   static Future<Map<String, dynamic>> updateUser({
     required int    userId,
     required String firstName,
@@ -305,10 +293,7 @@ class AdminService {
     String? phone,
   }) async {
     try {
-      final body = <String, dynamic>{
-        'first_name': firstName,
-        'last_name':  lastName,
-      };
+      final body = <String, dynamic>{'first_name': firstName, 'last_name': lastName};
       if (phone    != null) body['phone']    = phone;
       if (email    != null) body['email']    = email;
       if (username != null) body['username'] = username;
@@ -320,7 +305,7 @@ class AdminService {
     }
   }
 
-  // ─── DESACTIVAR USUARIO (soft delete) ──────────────────
+  // ─── DESACTIVAR USUARIO ────────────────────────────────
   static Future<Map<String, dynamic>> deactivateUser(int userId) async {
     try {
       final r = await ApiClient.delete<dynamic>('/admin/users/$userId');

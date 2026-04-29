@@ -1,9 +1,6 @@
 // lib/pages/scan_page.dart
 // ============================================================
-// ESCANEO QR — Nova App Móvil
-// ============================================================
-// Usa ApiService.registerScan() — envía token JWT automáticamente
-// Sin IP hardcodeada ni http directo
+// FIX: eliminado Future.delayed(1s) código muerto post-navegación
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -43,14 +40,13 @@ class _ScanPageState extends State<ScanPage> {
 
     final result = await ApiService.registerScan(code);
 
+    // FIX: navegar y no hacer nada más — el widget se destruye con pushReplacement
     if (mounted) {
       Navigator.pushReplacement(context,
         MaterialPageRoute(builder: (_) => SuccessPage(code: code, backendData: result)),
       );
     }
-
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) setState(() => _isProcessing = false);
+    // FIX: eliminado Future.delayed(1s) + setState código muerto
   }
 
   Future<void> _scanFromGallery() async {
@@ -157,7 +153,6 @@ class ScannerOverlayPainter extends CustomPainter {
     final rect = Rect.fromCenter(center: center, width: sq, height: sq);
     const cl = 25.0;
 
-    // Esquinas
     canvas.drawLine(Offset(rect.left, rect.top + cl), Offset(rect.left, rect.top), borderPaint);
     canvas.drawLine(Offset(rect.left, rect.top), Offset(rect.left + cl, rect.top), borderPaint);
     canvas.drawLine(Offset(rect.right - cl, rect.top), Offset(rect.right, rect.top), borderPaint);

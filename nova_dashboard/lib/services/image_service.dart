@@ -1,37 +1,42 @@
 // lib/services/image_service.dart
+// ============================================================
+// FIX 1: URL usa AppConstants.backendUrl (no hardcodeada)
+// FIX 2: Token usa AppConstants.keyToken = 'auth_token' (no 'admin_token')
+// FIX 3: Endpoint usa /admin/upload-image (no /admin/upload)
+// FIX 4: Parsing respuesta: backend devuelve imageUrl en raíz, no data['image']['url']
+// ============================================================
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/constants.dart';
 
 class ImageService {
-  static const String baseUrl = 'http://192.168.18.6:3000';
+  // FIX 1: URL centralizada desde AppConstants
+  static String get baseUrl => AppConstants.backendUrl;
 
-  // ✅ Obtener token de autenticación
+  // FIX 2: Token con clave correcta
   static Future<String?> _getAuthToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getString('admin_token');
+      return prefs.getString(AppConstants.keyToken); // 'auth_token'
     } catch (e) {
       debugPrint('Error obteniendo token: $e');
       return null;
     }
   }
 
-  // 📸 Método simplificado para web
+  // 📸 Método para selección de imagen en web
   Future<Map<String, dynamic>> pickImage() async {
     try {
-      // En web, simplemente retornamos un mapa indicando que se necesita upload
       return {
         'needsUpload': true,
-        'message': 'Use el botón de selección de archivos'
+        'message': 'Use el botón de selección de archivos',
       };
     } catch (e) {
       debugPrint('Error en pickImage: $e');
-      return {
-        'needsUpload': false,
-        'error': 'Error seleccionando imagen: $e'
-      };
+      return {'needsUpload': false, 'error': 'Error seleccionando imagen: $e'};
     }
   }
 
@@ -40,50 +45,52 @@ class ImageService {
     try {
       final token = await _getAuthToken();
 
-      // Crear request multipart
+      if (token == null || token.isEmpty) {
+        return {'success': false, 'error': 'No hay token de autenticación. Inicie sesión nuevamente.'};
+      }
+
+      // FIX 3: Endpoint correcto
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/admin/upload'),
+        Uri.parse('$baseUrl/admin/upload-image'),
       );
 
-      request.headers['Authorization'] = token ?? '';
+      // FIX 2: Header con Bearer token
+      request.headers['Authorization'] = 'Bearer $token';
       request.files.add(http.MultipartFile.fromBytes(
         'image',
         imageBytes,
         filename: filename,
       ));
 
-      final response = await request.send();
+      final response = await request.send().timeout(const Duration(seconds: 30));
       final responseData = await response.stream.bytesToString();
       final data = json.decode(responseData);
 
-      if (response.statusCode == 200 && data['success'] == true) {
+      if ((response.statusCode == 200 || response.statusCode == 201) && data['success'] == true) {
+        // FIX 4: Backend devuelve imageUrl y image_url en raíz
+        final imageUrl = data['imageUrl'] ?? data['image_url'] ?? '';
+
         return {
           'success': true,
-          'imageUrl': data['image']['url'],
-          'message': 'Imagen subida exitosamente',
+          'imageUrl': imageUrl,
+          'message': data['message'] ?? 'Imagen subida exitosamente',
         };
       } else {
         return {
           'success': false,
-          'error': data['error'] ?? 'Error subiendo imagen',
+          'error': data['error'] ?? 'Error subiendo imagen (${response.statusCode})',
         };
       }
     } catch (e) {
       debugPrint('Error subiendo imagen: $e');
-      return {
-        'success': false,
-        'error': 'Error de conexión: $e',
-      };
+      return {'success': false, 'error': 'Error de conexión: $e'};
     }
   }
 
   // ☁️ SUBIR IMAGEN DESDE URL (para imágenes existentes)
   Future<Map<String, dynamic>> uploadImageFromUrl(String imageUrl) async {
     try {
-      // Simular upload exitoso para URLs existentes
-      await Future.delayed(const Duration(milliseconds: 500));
-
       return {
         'success': true,
         'imageUrl': imageUrl,
@@ -91,14 +98,11 @@ class ImageService {
       };
     } catch (e) {
       debugPrint('Error procesando imagen URL: $e');
-      return {
-        'success': false,
-        'error': 'Error procesando imagen: $e',
-      };
+      return {'success': false, 'error': 'Error procesando imagen: $e'};
     }
   }
 
-  // 🖼️ Obtener imagen por tipo (fallback)
+  // 🖼️ Imagen por tipo (fallback)
   static String getImageByType(String type) {
     switch (type) {
       case 'hotel':
