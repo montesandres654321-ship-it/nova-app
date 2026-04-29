@@ -10,7 +10,9 @@ import '../core/design/app_spacing.dart';
 import '../core/design/app_radius.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, required this.onNavigateToTab});
+
+  final void Function(int) onNavigateToTab;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -85,30 +87,86 @@ class _HomePageState extends State<HomePage> {
   Future<void> _logout() async {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Cerrar sesión'),
-        content:
-            const Text('¿Estás seguro de que quieres salir?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.lgAll),
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.logout_rounded,
+                    color: AppColors.error, size: 32),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              const Text(
+                'Cerrar sesión',
+                style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              const Text(
+                '¿Estás seguro de que quieres salir?',
+                style: TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textSecondary,
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.mdAll),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Cancelar'),
+                    ),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        final isGoogle =
+                            await GoogleAuthService.isGoogleUser();
+                        if (isGoogle) await GoogleAuthService.signOut();
+                        await ApiService.logout();
+                        if (!mounted) return;
+                        Navigator.pushReplacementNamed(context, '/');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.error,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.mdAll),
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: const Text('Salir',
+                          style:
+                              TextStyle(fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final isGoogle =
-                  await GoogleAuthService.isGoogleUser();
-              if (isGoogle) await GoogleAuthService.signOut();
-              await ApiService.logout();
-              if (!mounted) return;
-              Navigator.pushReplacementNamed(context, '/');
-            },
-            style: TextButton.styleFrom(
-                foregroundColor: AppColors.error),
-            child: const Text('Salir'),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -440,22 +498,22 @@ class _HomePageState extends State<HomePage> {
             _buildGridItem(
               Icons.history_rounded,
               'Historial',
-              '/history',
+              () => widget.onNavigateToTab(2),
             ),
             _buildGridItem(
               Icons.explore_rounded,
               'Lugares',
-              '/passport',
+              () => widget.onNavigateToTab(1),
             ),
             _buildGridItem(
               Icons.person_outline_rounded,
               'Mi Perfil',
-              '/profile',
+              () => widget.onNavigateToTab(3),
             ),
             _buildGridItem(
               Icons.settings_outlined,
               'Ajustes',
-              '/settings',
+              () => Navigator.pushNamed(context, '/settings'),
             ),
           ],
         ),
@@ -489,12 +547,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildGridItem(
-      IconData icon, String label, String route) {
+      IconData icon, String label, VoidCallback onTap) {
     return Material(
       color: AppColors.surface,
       borderRadius: AppRadius.mdAll,
       child: InkWell(
-        onTap: () => Navigator.pushNamed(context, route),
+        onTap: onTap,
         borderRadius: AppRadius.mdAll,
         child: Container(
           decoration: BoxDecoration(

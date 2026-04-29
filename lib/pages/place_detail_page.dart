@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'scan_page.dart';
 import '../models/place_model.dart';
 import '../models/place_type.dart';
+import '../core/design/app_back_button.dart';
 import '../core/design/app_colors.dart';
 import '../core/design/app_spacing.dart';
 import '../core/design/app_radius.dart';
@@ -18,7 +19,7 @@ class PlaceDetailPage extends StatelessWidget {
       backgroundColor: AppColors.surface,
       body: CustomScrollView(
         slivers: [
-          _buildSliverAppBar(type),
+          _buildSliverAppBar(context, type),
           SliverToBoxAdapter(
             child: TweenAnimationBuilder<double>(
               tween: Tween(begin: 0.0, end: 1.0),
@@ -41,13 +42,21 @@ class PlaceDetailPage extends StatelessWidget {
 
   // ── Hero image (SliverAppBar) ──────────────────────────────
 
-  SliverAppBar _buildSliverAppBar(PlaceType type) {
+  SliverAppBar _buildSliverAppBar(BuildContext context, PlaceType type) {
     return SliverAppBar(
       expandedHeight: 260,
       pinned: true,
       backgroundColor: AppColors.primary,
       foregroundColor: AppColors.onPrimary,
       elevation: 0,
+      automaticallyImplyLeading: false,
+      leadingWidth: 52,
+      leading: const Padding(
+        padding: EdgeInsets.only(left: AppSpacing.sm),
+        child: Center(
+          child: AppBackButton(variant: AppBackButtonVariant.onPrimary),
+        ),
+      ),
       title: Text(
         place.name,
         maxLines: 1,

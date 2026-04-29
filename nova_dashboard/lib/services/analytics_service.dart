@@ -60,9 +60,15 @@ class AnalyticsService {
       final response = await http.get(url, headers: headers)
           .timeout(const Duration(seconds: 15));
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return List<Map<String, dynamic>>.from(
-            data['data'] ?? data['scans'] ?? []);
+        final body = jsonDecode(response.body);
+        // Maneja: { data:[...] }, { scans:[...] }, { scansByDay:[...] } o array directo
+        if (body is List) return List<Map<String, dynamic>>.from(body);
+        if (body is Map) {
+          for (final key in ['data', 'scans', 'scansByDay', 'scans_by_day']) {
+            if (body[key] is List) return List<Map<String, dynamic>>.from(body[key] as List);
+          }
+        }
+        return [];
       }
       throw Exception('Error ${response.statusCode}');
     } catch (e) { throw Exception('Error de red: $e'); }

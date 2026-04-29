@@ -55,11 +55,11 @@ class _MainNavigationPageState extends State<MainNavigationPage>
         opacity: _fadeAnim,
         child: IndexedStack(
           index: _currentIndex,
-          children: const [
-            HomePage(),
-            PlacesPage(),
-            HistoryPage(),
-            ProfilePage(),
+          children: [
+            HomePage(onNavigateToTab: _onTap),
+            const PlacesPage(),
+            const HistoryPage(),
+            const ProfilePage(),
           ],
         ),
       ),

@@ -1,12 +1,19 @@
 // lib/pages/stats_dashboard_page.dart
-// FIX: Color unificado 0xFF06B6A4 + responsive LayoutBuilder
+// ============================================================
+// FUSIÓN: usa getDashboardSummary() para KPIs + actividad reciente
+//         usa getDashboardStats() para scansByDay completo + topPlaces
+// Así muestra todo el historial, no solo 7 días
+// ============================================================
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/admin_service.dart';
-import '../services/analytics_service.dart';
+import '../utils/app_theme.dart';
+import '../widgets/common/loading_indicator.dart';
+import '../widgets/common/error_widget.dart';
+import '../widgets/common/stat_card.dart';
 import '../widgets/charts/line_chart_widget.dart';
 import '../widgets/charts/bar_chart_widget.dart';
-import '../widgets/charts/donut_chart_widget.dart';
 
 class StatsDashboardPage extends StatefulWidget {
   final void Function(int index)?   onNavigate;
@@ -16,8 +23,12 @@ class StatsDashboardPage extends StatefulWidget {
   final int reportsIndex;
 
   const StatsDashboardPage({
-    super.key, this.onNavigate, this.onNavigateToPlaces,
-    this.placesIndex = 1, this.rewardsIndex = 3, this.reportsIndex = 4,
+    super.key,
+    this.onNavigate,
+    this.onNavigateToPlaces,
+    this.placesIndex  = 1,
+    this.rewardsIndex = 3,
+    this.reportsIndex = 4,
   });
 
   @override
@@ -25,14 +36,22 @@ class StatsDashboardPage extends StatefulWidget {
 }
 
 class _StatsDashboardPageState extends State<StatsDashboardPage> {
-  static const _teal = Color(0xFF06B6A4);
-  bool _loading = true; String _error = '';
-  int _selectedDays = 0;
-  final List<int> _daysOptions = [7, 15, 30, 60, 90, 0];
-  int _totalUsers = 0, _totalPlaces = 0, _totalScans = 0, _totalRewards = 0;
-  Map<String, dynamic> _placesByType = {};
-  List<Map<String, dynamic>> _topPlaces = [], _scansByDay = [];
-  final _analytics = AnalyticsService();
+  bool   _loading = true;
+  String _error   = '';
+
+  // KPIs del summary
+  int _totalUsers     = 0;
+  int _activePlaces   = 0;
+  int _totalScans     = 0;
+  int _scansToday     = 0;
+  int _pendingRewards = 0;
+
+  // Datos de gráficas — del stats/dashboard (historial completo)
+  List<Map<String, dynamic>> _topPlaces      = [];
+  List<Map<String, dynamic>> _scansByDay     = [];
+
+  // Actividad reciente — del dashboard/summary
+  List<Map<String, dynamic>> _recentActivity = [];
 
   @override
   void initState() { super.initState(); _load(); }
@@ -40,192 +59,230 @@ class _StatsDashboardPageState extends State<StatsDashboardPage> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = ''; });
     try {
-      final dp = _selectedDays == 0 ? 3650 : _selectedDays;
-      final results = await Future.wait([AdminService.getDashboardStats(), _analytics.getScansByDay(days: dp)]);
-      final data = results[0] as Map<String, dynamic>;
-      final scansData = results[1] as List<Map<String, dynamic>>;
+      // Cargar ambas fuentes en paralelo
+      final results = await Future.wait([
+        AdminService.getDashboardSummary(),  // KPIs + actividad reciente
+        AdminService.getDashboardStats(),    // scansByDay completo + topPlaces
+      ]);
+
       if (!mounted) return;
-      if (data['success'] == true) {
-        final stats = data['stats'] as Map<String, dynamic>? ?? {};
-        final pbt = data['placesByType'];
-        setState(() {
-          _totalUsers = stats['users'] as int? ?? 0; _totalPlaces = stats['places'] as int? ?? 0;
-          _totalScans = stats['scans'] as int? ?? 0; _totalRewards = stats['rewards'] as int? ?? 0;
-          _placesByType = pbt is Map<String, dynamic> ? pbt : {};
-          _topPlaces = List<Map<String, dynamic>>.from(data['topPlaces'] ?? []);
-          _scansByDay = scansData; _loading = false;
-        });
-      } else { setState(() { _error = data['error']?.toString() ?? 'Error'; _loading = false; }); }
-    } catch (e) { if (mounted) setState(() { _error = '$e'; _loading = false; }); }
+
+      final summary = results[0];
+      final stats   = results[1];
+
+      // KPIs del summary (más precisos)
+      if (summary['success'] == true) {
+        _totalUsers     = _n(summary['totalUsers']);
+        _activePlaces   = _n(summary['activePlaces']);
+        _totalScans     = _n(summary['totalScans']);
+        _scansToday     = _n(summary['scansToday']);
+        _pendingRewards = _n(summary['pendingRewards']);
+        _recentActivity = List<Map<String, dynamic>>.from(summary['recentActivity'] ?? []);
+      }
+
+      // Gráficas del stats/dashboard (historial completo)
+      if (stats['success'] == true) {
+        final rawStats = stats['stats'] as Map<String, dynamic>? ?? {};
+
+        // Si summary falló, usar stats como fallback para KPIs
+        if (summary['success'] != true) {
+          _totalUsers   = _n(rawStats['users']);
+          _activePlaces = _n(rawStats['places']);
+          _totalScans   = _n(rawStats['scans']);
+        }
+
+        // scansByDay del endpoint /stats/dashboard — TODO el historial
+        final rawScansByDay = stats['scansByDay'] as List? ??
+            (stats['data'] is Map ? (stats['data'] as Map)['scansByDay'] as List? : null) ?? [];
+        _scansByDay = List<Map<String, dynamic>>.from(rawScansByDay);
+
+        // topPlaces
+        final rawTopPlaces = stats['topPlaces'] as List? ?? [];
+        _topPlaces = List<Map<String, dynamic>>.from(rawTopPlaces);
+      }
+
+      setState(() { _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
   }
 
-  void _goTo(int i) => widget.onNavigate?.call(i);
-  String get _periodLabel => _selectedDays == 0 ? 'Todo el historial' : 'Últimos $_selectedDays días';
+  static int _n(dynamic v) => v is num ? v.toInt() : 0;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text('Estadísticas Generales', style: TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: _teal, foregroundColor: Colors.white, elevation: 0,
-        actions: [
-          DropdownButton<int>(value: _selectedDays, dropdownColor: _teal,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              underline: const SizedBox(), icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-              items: _daysOptions.map((d) => DropdownMenuItem(value: d,
-                  child: Text(d == 0 ? 'Todo el historial' : '$d días'))).toList(),
-              onChanged: (v) { if (v != null) { setState(() => _selectedDays = v); _load(); } }),
-          IconButton(icon: const Icon(Icons.refresh_rounded), onPressed: _load),
-        ],
-      ),
-      body: _loading ? const Center(child: CircularProgressIndicator(color: _teal))
-          : _error.isNotEmpty ? _buildError() : _buildLayout(),
-    );
-  }
+    if (_loading) return const LoadingIndicator(message: 'Cargando estadísticas...');
+    if (_error.isNotEmpty) return ErrorDisplay(message: _error, onRetry: _load, retryLabel: 'Reintentar');
 
-  Widget _buildLayout() {
-    return LayoutBuilder(builder: (ctx, constraints) {
-      final isWide = constraints.maxWidth > 800;
-      return Padding(padding: const EdgeInsets.all(16), child: Column(children: [
-        _buildCardsRow(isWide),
-        const SizedBox(height: 16),
-        Expanded(flex: 5, child: isWide
-            ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Expanded(flex: 3, child: _buildScansByDayChart()),
-          const SizedBox(width: 16),
-          Expanded(flex: 2, child: _buildDistributionChart()),
-        ])
-            : Column(children: [
-          Expanded(child: _buildScansByDayChart()),
-          const SizedBox(height: 12),
-          Expanded(child: _buildDistributionChart()),
-        ])),
-        const SizedBox(height: 16),
-        Expanded(flex: 4, child: _buildRankingChart()),
-      ]));
+    return LayoutBuilder(builder: (_, constraints) {
+      final wide = constraints.maxWidth > 900;
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(AppTheme.spaceLG),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          _buildHeader(),
+          const SizedBox(height: AppTheme.spaceLG),
+          _buildStatCards(wide),
+          const SizedBox(height: AppTheme.spaceLG),
+          if (wide)
+            Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Expanded(flex: 3, child: _buildScansChart()),
+              const SizedBox(width: AppTheme.spaceLG),
+              Expanded(flex: 2, child: _buildTopPlacesChart()),
+            ])
+          else ...[
+            _buildScansChart(),
+            const SizedBox(height: AppTheme.spaceLG),
+            _buildTopPlacesChart(),
+          ],
+          const SizedBox(height: AppTheme.spaceLG),
+          _buildActivityTable(),
+        ]),
+      );
     });
   }
 
-  Widget _buildCardsRow(bool isWide) {
+  Widget _buildHeader() {
+    final today = DateFormat('d MMM yyyy', 'es').format(DateTime.now());
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Estadísticas Generales',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.gray900)),
+        const SizedBox(height: 2),
+        Text('Todo el historial · $today',
+            style: const TextStyle(fontSize: 12, color: AppTheme.gray500)),
+      ]),
+      const Spacer(),
+      if (_pendingRewards > 0)
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.amber.withOpacity(0.3))),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.card_giftcard_rounded, size: 14, color: Colors.amber),
+            const SizedBox(width: 4),
+            Text('$_pendingRewards pendientes', style: TextStyle(fontSize: 11, color: Colors.amber[800], fontWeight: FontWeight.w600)),
+          ]),
+        ),
+      const SizedBox(width: 8),
+      IconButton(icon: const Icon(Icons.refresh_rounded, color: AppTheme.primary), tooltip: 'Actualizar', onPressed: _load),
+    ]);
+  }
+
+  Widget _buildStatCards(bool wide) {
     final cards = [
-      _cardBody('Turistas', _totalUsers, Icons.people_rounded, const Color(0xFF2563EB), () => Navigator.of(context).pushNamed('/users')),
-      _cardBody('Lugares', _totalPlaces, Icons.place_rounded, const Color(0xFF059669), () => _goTo(widget.placesIndex)),
-      _cardBody('Escaneos', _totalScans, Icons.qr_code_scanner, const Color(0xFFD97706), () => _goTo(widget.reportsIndex)),
-      _cardBody('Recompensas', _totalRewards, Icons.card_giftcard_rounded, const Color(0xFF7C3AED), () => _goTo(widget.rewardsIndex)),
+      StatCard(title: 'Turistas', value: _totalUsers.toString(), icon: Icons.people_rounded, color: AppTheme.info,
+          onTap: () => widget.onNavigate?.call(3)),
+      StatCard(title: 'Lugares activos', value: _activePlaces.toString(), icon: Icons.place_rounded, color: AppTheme.success,
+          onTap: () => widget.onNavigate?.call(widget.placesIndex)),
+      StatCard(title: 'Escaneos totales', value: _totalScans.toString(), icon: Icons.qr_code_scanner_rounded, color: AppTheme.warning,
+          onTap: () => widget.onNavigate?.call(widget.reportsIndex)),
+      StatCard(title: 'Escaneos hoy', value: _scansToday.toString(), icon: Icons.today_rounded, color: AppTheme.primary),
     ];
-    if (isWide) {
-      return IntrinsicHeight(child: Row(children: [
-        Expanded(child: cards[0]), const SizedBox(width: 12),
-        Expanded(child: cards[1]), const SizedBox(width: 12),
-        Expanded(child: cards[2]), const SizedBox(width: 12),
+    if (wide) {
+      return Row(children: [
+        Expanded(child: cards[0]), const SizedBox(width: AppTheme.spaceMD),
+        Expanded(child: cards[1]), const SizedBox(width: AppTheme.spaceMD),
+        Expanded(child: cards[2]), const SizedBox(width: AppTheme.spaceMD),
         Expanded(child: cards[3]),
-      ]));
+      ]);
     }
-    return GridView.count(crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: 10, crossAxisSpacing: 10, childAspectRatio: 2.2, children: cards);
+    return Column(children: [
+      Row(children: [Expanded(child: cards[0]), const SizedBox(width: AppTheme.spaceMD), Expanded(child: cards[1])]),
+      const SizedBox(height: AppTheme.spaceMD),
+      Row(children: [Expanded(child: cards[2]), const SizedBox(width: AppTheme.spaceMD), Expanded(child: cards[3])]),
+    ]);
   }
 
-  Widget _cardBody(String title, int value, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12),
-        child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: color.withOpacity(0.15)),
-                boxShadow: [BoxShadow(color: color.withOpacity(0.08), blurRadius: 8, offset: const Offset(0, 3))]),
-            child: Row(children: [
-              Container(width: 40, height: 40, decoration: BoxDecoration(
-                  color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: Icon(icon, color: color, size: 20)),
-              const SizedBox(width: 10),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(title, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500)),
-                Text(value.toString(), style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-              ])),
-              Icon(Icons.chevron_right_rounded, color: color.withOpacity(0.4), size: 16),
-            ])));
-  }
-
-  Widget _buildScansByDayChart() {
-    final chartData = _scansByDay.map((item) {
+  Widget _buildScansChart() {
+    final data = _scansByDay.map((item) {
       final ds = item['date']?.toString() ?? '';
-      String l = ds;
-      try { l = DateFormat('d MMM', 'es').format(DateTime.parse(ds)); } catch (_) {}
-      return {'label': l, 'value': item['count'] ?? 0};
+      String label = ds;
+      try { label = DateFormat('d MMM', 'es').format(DateTime.parse(ds)); } catch (_) {}
+      return {'label': label, 'value': item['count'] ?? 0};
     }).toList();
-    return Container(decoration: _cardDec(), child: Padding(padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(width: 4, height: 20, decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(width: 8),
-            const Text('Actividad de Escaneos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const Spacer(),
-            Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: _teal.withOpacity(0.08), borderRadius: BorderRadius.circular(20)),
-                child: Text(_periodLabel, style: TextStyle(fontSize: 10, color: Colors.grey[600]))),
-          ]),
-          const SizedBox(height: 12),
-          Expanded(child: chartData.isEmpty
-              ? Center(child: Text('Sin datos', style: TextStyle(color: Colors.grey[400])))
-              : LineChartWidget(title: '', data: chartData, color: _teal, fillArea: true, height: double.infinity)),
-        ])));
+
+    return _chartCard(height: 280, title: 'Actividad de Escaneos', icon: Icons.show_chart_rounded, color: AppTheme.primary,
+        child: data.isEmpty
+            ? _emptyState('Sin actividad registrada')
+            : LineChartWidget(title: '', data: data, color: AppTheme.primary, fillArea: true, height: double.infinity));
   }
 
-  Widget _buildDistributionChart() {
-    final h = _placesByType['hotel'] as int? ?? 0;
-    final r = _placesByType['restaurant'] as int? ?? 0;
-    final b = _placesByType['bar'] as int? ?? 0;
-    return Container(decoration: _cardDec(), child: Padding(padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(width: 4, height: 20, decoration: BoxDecoration(color: const Color(0xFF059669), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(width: 8),
-            const Text('Por Tipo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          ]),
-          const SizedBox(height: 8),
-          Expanded(child: DonutChartWidget(title: '', subtitle: '', data: [
-            {'label': 'Hoteles', 'value': h, 'color': const Color(0xFF2563EB)},
-            {'label': 'Restaurantes', 'value': r, 'color': const Color(0xFF059669)},
-            {'label': 'Bares', 'value': b, 'color': const Color(0xFFD97706)},
-          ], height: double.infinity, showLegend: true)),
-          const SizedBox(height: 8),
-          Row(children: [
-            _typeChip('🏨', h, const Color(0xFF2563EB), 'hotel'), const SizedBox(width: 4),
-            _typeChip('🍽️', r, const Color(0xFF059669), 'restaurant'), const SizedBox(width: 4),
-            _typeChip('🍹', b, const Color(0xFFD97706), 'bar'),
-          ]),
-        ])));
+  Widget _buildTopPlacesChart() {
+    final data = _topPlaces.take(5).map((p) => {
+      'label': (p['name']?.toString() ?? ''),
+      'value': p['totalScans'] ?? p['total_scans'] ?? 0,
+    }).toList();
+
+    return _chartCard(height: 280, title: 'Top Establecimientos', icon: Icons.bar_chart_rounded, color: AppTheme.warning,
+        child: data.isEmpty
+            ? _emptyState('Sin escaneos registrados')
+            : BarChartWidget(title: '', data: data, color: AppTheme.warning, height: double.infinity, showValues: true));
   }
 
-  Widget _typeChip(String emoji, int count, Color color, String tipo) => Expanded(child: InkWell(
-      onTap: () => widget.onNavigateToPlaces?.call(tipo), borderRadius: BorderRadius.circular(8),
-      child: Container(padding: const EdgeInsets.symmetric(vertical: 6),
-          decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
-          child: Column(children: [Text(emoji, style: const TextStyle(fontSize: 14)),
-            Text('$count', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color))]))));
-
-  Widget _buildRankingChart() {
-    if (_topPlaces.isEmpty) return const SizedBox();
-    final cd = _topPlaces.take(6).map((p) => {'label': p['name']?.toString() ?? '', 'value': p['total_scans'] ?? 0}).toList();
-    return Container(decoration: _cardDec(), child: Padding(padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(width: 4, height: 20, decoration: BoxDecoration(color: const Color(0xFFD97706), borderRadius: BorderRadius.circular(2))),
-            const SizedBox(width: 8),
-            const Text('Top Establecimientos', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-            const Spacer(),
-            TextButton.icon(onPressed: () => _goTo(widget.reportsIndex),
-                icon: const Icon(Icons.arrow_forward_rounded, size: 14),
-                label: const Text('Ver reportes', style: TextStyle(fontSize: 11))),
-          ]),
-          const SizedBox(height: 8),
-          Expanded(child: BarChartWidget(title: '', data: cd, color: const Color(0xFFD97706), height: double.infinity, showValues: true)),
-        ])));
+  Widget _buildActivityTable() {
+    if (_recentActivity.isEmpty) return const SizedBox();
+    return _chartCard(title: 'Actividad Reciente', icon: Icons.history_rounded, color: AppTheme.secondary,
+        child: SingleChildScrollView(scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowColor: WidgetStateProperty.all(AppTheme.gray50),
+              headingTextStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.gray600),
+              dataRowMinHeight: 40, dataRowMaxHeight: 48, dividerThickness: 0.5,
+              columns: const [
+                DataColumn(label: Text('Turista')),
+                DataColumn(label: Text('Lugar')),
+                DataColumn(label: Text('Tipo')),
+                DataColumn(label: Text('Fecha y hora')),
+              ],
+              rows: _recentActivity.take(10).map((item) {
+                final ts = item['timestamp']?.toString() ?? '';
+                String dateLabel = ts;
+                try { dateLabel = DateFormat('d MMM · HH:mm', 'es').format(DateTime.parse(ts)); } catch (_) {}
+                return DataRow(cells: [
+                  DataCell(Text(item['userName']?.toString() ?? item['username']?.toString() ?? '—',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppTheme.gray800))),
+                  DataCell(Text(item['placeName']?.toString() ?? '—',
+                      style: const TextStyle(fontSize: 13, color: AppTheme.gray700))),
+                  DataCell(_typeChip(item['type']?.toString() ?? item['placeType']?.toString() ?? '')),
+                  DataCell(Text(dateLabel, style: const TextStyle(fontSize: 12, color: AppTheme.gray500))),
+                ]);
+              }).toList(),
+            )));
   }
 
-  BoxDecoration _cardDec() => BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-      boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.08), blurRadius: 8)]);
-  Widget _buildError() => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-    const Icon(Icons.error_outline, size: 60, color: Colors.red), const SizedBox(height: 16),
-    Text(_error, textAlign: TextAlign.center), const SizedBox(height: 24),
-    ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Reintentar'))]));
+  Widget _chartCard({required String title, required IconData icon, required Color color, required Widget child, double? height}) {
+    return Container(height: height, padding: const EdgeInsets.all(AppTheme.spaceLG),
+        decoration: AppTheme.cardDecoration(),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(width: 4, height: 16, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(width: AppTheme.spaceXS),
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: AppTheme.spaceXS),
+            Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppTheme.gray800)),
+          ]),
+          const SizedBox(height: AppTheme.spaceMD),
+          if (height != null) Expanded(child: child) else child,
+        ]));
+  }
+
+  Widget _emptyState(String msg) => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    const Icon(Icons.inbox_rounded, size: 36, color: AppTheme.gray300), const SizedBox(height: AppTheme.spaceXS),
+    Text(msg, style: const TextStyle(fontSize: 12, color: AppTheme.gray400)),
+  ]));
+
+  Widget _typeChip(String type) {
+    Color color; IconData icon;
+    switch (type.toLowerCase()) {
+      case 'hotel': color = AppTheme.info; icon = Icons.hotel_rounded; break;
+      case 'restaurant': color = AppTheme.success; icon = Icons.restaurant_rounded; break;
+      case 'bar': color = AppTheme.warning; icon = Icons.local_bar_rounded; break;
+      default: color = AppTheme.gray400; icon = Icons.place_rounded;
+    }
+    return Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(color: color.withOpacity(0.12), borderRadius: BorderRadius.circular(AppTheme.radiusSM)),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 11, color: color), const SizedBox(width: 3),
+          Text(type, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+        ]));
+  }
 }

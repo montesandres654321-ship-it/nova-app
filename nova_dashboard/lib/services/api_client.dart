@@ -209,20 +209,24 @@ class ApiClient {
     }
 
     // ── Extraer datos con formato flexible ──────────────────
-    // Formato 1: { success: true, data: {...} }  → usa data
-    // Formato 2: { success: true, users: [...] } → usa el primer campo que no sea success/error
+    // Formato 1: { success: true, data: {...} }         → usa data directamente
+    // Formato 2: { success: true, users: [...] }        → único campo → devuelve su valor
+    // Formato 3: { success: true, stats, topPlaces, … } → varios campos → devuelve mapa completo
     dynamic responseData = responseMap['data'];
 
     if (responseData == null) {
-      // Buscar el primer campo de datos que no sea metadatos
       const metaFields = {'success', 'error', 'message', 'meta', 'total'};
-      for (final entry in responseMap.entries) {
-        if (!metaFields.contains(entry.key)) {
-          responseData = entry.value;
-          break;
-        }
+      final dataEntries = responseMap.entries
+          .where((e) => !metaFields.contains(e.key))
+          .toList();
+
+      if (dataEntries.length == 1) {
+        // Un solo campo de datos → devolver su valor (e.g. users:[...])
+        responseData = dataEntries.first.value;
+      } else {
+        // Múltiples campos → devolver el mapa completo para que el caller extraiga lo que necesita
+        responseData = responseMap;
       }
-      // Si sigue null, devolver el mapa completo como datos
       responseData ??= responseMap;
     }
 

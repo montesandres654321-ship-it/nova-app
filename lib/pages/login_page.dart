@@ -6,7 +6,7 @@ import '../utils/constants.dart';
 import '../core/design/app_colors.dart';
 import '../core/design/app_spacing.dart';
 import '../core/design/app_radius.dart';
-import 'home_page.dart';
+import 'main_navigation_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
 
@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
           backgroundColor: AppColors.success,
         ));
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const HomePage()),
+          MaterialPageRoute(builder: (_) => const MainNavigationPage()),
         );
       } else {
         if (!mounted) return;
@@ -115,7 +115,7 @@ class _LoginPageState extends State<LoginPage> {
         await Future.delayed(const Duration(milliseconds: 1000));
         if (mounted) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomePage()),
+            MaterialPageRoute(builder: (_) => const MainNavigationPage()),
           );
         }
       } else {
@@ -139,15 +139,28 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final padding = MediaQuery.paddingOf(context);
+    final screenH = MediaQuery.sizeOf(context).height;
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
         child: SafeArea(
-          child: Column(
-            children: [
-              _buildHero(),
-              Expanded(child: _buildFormPanel()),
-            ],
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: screenH - padding.top - padding.bottom,
+              ),
+              child: IntrinsicHeight(
+                child: Column(
+                  children: [
+                    _buildHero(),
+                    Expanded(child: _buildFormPanel()),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -159,13 +172,13 @@ class _LoginPageState extends State<LoginPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
-        vertical: AppSpacing.lg,
+        vertical: 12,
       ),
       child: Column(
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 54,
+            height: 54,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
               borderRadius: AppRadius.lgAll,
@@ -176,7 +189,7 @@ class _LoginPageState extends State<LoginPage> {
             ),
             child: const Icon(
               Icons.travel_explore_rounded,
-              size: 36,
+              size: 26,
               color: Colors.white,
             ),
           ),
@@ -184,7 +197,7 @@ class _LoginPageState extends State<LoginPage> {
           const Text(
             'NOVA',
             style: TextStyle(
-              fontSize: 30,
+              fontSize: 24,
               fontWeight: FontWeight.w800,
               color: Colors.white,
               letterSpacing: 6,
@@ -215,13 +228,12 @@ class _LoginPageState extends State<LoginPage> {
           topRight: Radius.circular(AppRadius.xl),
         ),
       ),
-      child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
+      child: Padding(
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.lg,
+          AppSpacing.md,
           AppSpacing.lg,
-          AppSpacing.lg,
-          AppSpacing.xl,
+          AppSpacing.md,
         ),
         child: Form(
           key: _formKey,
@@ -241,7 +253,7 @@ class _LoginPageState extends State<LoginPage> {
                 'Inicia sesión para continuar',
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 10),
 
               // Email
               _buildInput(
@@ -255,7 +267,7 @@ class _LoginPageState extends State<LoginPage> {
                   return null;
                 },
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: 10),
 
               // Contraseña
               _buildInput(
@@ -321,12 +333,12 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 10),
 
               // Botón primario
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 48,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
@@ -352,7 +364,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 10),
 
               // Divisor
               Row(
@@ -373,12 +385,12 @@ class _LoginPageState extends State<LoginPage> {
                       child: Divider(color: AppColors.border, thickness: 1)),
                 ],
               ),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: AppSpacing.sm),
 
               // Google
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 44,
                 child: OutlinedButton(
                   onPressed: _isLoading ? null : _loginWithGoogle,
                   style: OutlinedButton.styleFrom(
@@ -420,7 +432,7 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
+              const SizedBox(height: 6),
 
               // Facebook + Apple
               Row(
@@ -448,7 +460,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 8),
 
               // Crear cuenta
               Center(
@@ -516,7 +528,7 @@ class _LoginPageState extends State<LoginPage> {
         fillColor: AppColors.surfaceVariant,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
-          vertical: AppSpacing.md,
+          vertical: 12,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: AppRadius.mdAll,
@@ -553,7 +565,7 @@ class _LoginPageState extends State<LoginPage> {
         foregroundColor: AppColors.textSecondary,
         side: const BorderSide(color: AppColors.border, width: 1.5),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm + 2),
+        padding: const EdgeInsets.symmetric(vertical: 6),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

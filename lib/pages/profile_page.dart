@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../services/google_auth_service.dart';
 import '../utils/constants.dart';
+import '../core/design/app_back_button.dart';
 import '../core/design/app_colors.dart';
 import '../core/design/app_spacing.dart';
 import '../core/design/app_radius.dart';
@@ -135,6 +136,13 @@ class _ProfilePageState extends State<ProfilePage> {
         scrolledUnderElevation: 1,
         surfaceTintColor: AppColors.surface,
         automaticallyImplyLeading: false,
+        leadingWidth: 52,
+        leading: Navigator.canPop(context)
+            ? const Padding(
+                padding: EdgeInsets.only(left: AppSpacing.sm),
+                child: Center(child: AppBackButton()),
+              )
+            : null,
         titleTextStyle: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,

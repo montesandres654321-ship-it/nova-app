@@ -147,7 +147,7 @@ class PlaceService {
   // ── ESTADÍSTICAS DEL LUGAR ────────────────────────────
   static Future<Map<String, dynamic>> getPlaceStats(int placeId) async {
     try {
-      final response = await ApiClient.get<dynamic>('/my-place/stats?place_id=$placeId');
+      final response = await ApiClient.get<dynamic>('/places/my-place/stats?place_id=$placeId');
       final data = response.data;
       if (data is! Map<String, dynamic>) throw ApiException('Formato inválido');
       return data;

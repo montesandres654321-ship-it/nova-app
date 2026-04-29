@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/design/app_back_button.dart';
 import '../core/design/app_colors.dart';
 import '../core/design/app_spacing.dart';
 import '../core/design/app_radius.dart';
@@ -87,25 +88,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          GestureDetector(
+          AppBackButton(
+            variant: AppBackButtonVariant.onPrimary,
             onTap: _goBack,
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: AppRadius.smAll,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.25),
-                  width: 1,
-                ),
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white,
-                size: 16,
-              ),
-            ),
           ),
           const SizedBox(height: AppSpacing.md),
           const Text(

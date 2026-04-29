@@ -1,5 +1,10 @@
-// lib/main.dart
+// lib/main.dart — Nova Dashboard
+// ============================================================
+// FIX: initializeDateFormatting('es') para DateFormat en español
+// ============================================================
+
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'pages/login_page.dart';
 import 'pages/dashboard_page.dart';
 import 'pages/users_page.dart';
@@ -10,7 +15,9 @@ import 'pages/reports_page.dart';
 import 'pages/places/list_tab.dart';
 import 'pages/owners/dashboard_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es', null);
   runApp(const MyApp());
 }
 
@@ -31,67 +38,49 @@ class MyApp extends StatelessWidget {
       ),
       initialRoute: '/login',
       onGenerateRoute: (settings) {
-
-        // ── CORRECCIÓN: ruta raíz redirige a login ──────
-        // Evita el 404 al refrescar el navegador en Flutter Web
         if (settings.name == '/' || settings.name == null) {
           return MaterialPageRoute(builder: (_) => const LoginPage());
         }
-
-        // ── RUTAS PÚBLICAS ─────────────────────────────
         if (settings.name == '/login') {
           return MaterialPageRoute(builder: (_) => const LoginPage());
         }
-
-        // ── RUTAS PANEL ADMIN / SECRETARÍA ─────────────
         if (settings.name == '/dashboard') {
           return MaterialPageRoute(builder: (_) => const DashboardPage());
         }
-
         if (settings.name == '/users') {
           return MaterialPageRoute(builder: (_) => const UsersPage());
         }
-
         if (settings.name == '/rewards') {
           return MaterialPageRoute(builder: (_) => const RewardsPage());
         }
-
         if (settings.name == '/scans') {
           return MaterialPageRoute(builder: (_) => const ScansPage());
         }
-
         if (settings.name == '/reports') {
           return MaterialPageRoute(builder: (_) => const ReportsPage());
         }
-
         if (settings.name == '/places') {
           return MaterialPageRoute(
             builder: (_) => const PlacesListTab(canEdit: true),
           );
         }
-
         if (settings.name == '/user-detail') {
           final userId = settings.arguments as int;
           return MaterialPageRoute(
             builder: (_) => UserDetailPage(userId: userId),
           );
         }
-
-        // ── RUTA PROPIETARIO (user_place) ───────────────
         if (settings.name == '/owner-dashboard') {
           final args = settings.arguments as Map<String, dynamic>?;
-
           if (args == null) {
             return _buildErrorRoute('Acceso no autorizado',
                 'Esta ruta requiere autenticación como propietario.');
           }
-
           final placeId = args['placeId'] as int?;
           if (placeId == null) {
             return _buildErrorRoute('Lugar no asignado',
-                'Su usuario no tiene un lugar asignado. Contacte al administrador.');
+                'Su usuario no tiene un lugar asignado.');
           }
-
           return MaterialPageRoute(
             builder: (context) => OwnerDashboardPage(
               userName:  args['userName']  ?? '',
@@ -103,8 +92,6 @@ class MyApp extends StatelessWidget {
             ),
           );
         }
-
-        // ── 404 ────────────────────────────────────────
         return _buildErrorRoute(
           '404 - Página no encontrada',
           'La ruta "${settings.name}" no existe.',

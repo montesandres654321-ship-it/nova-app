@@ -1,6 +1,10 @@
-// lib/pages/about_page.dart
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/design/app_back_button.dart';
+import '../core/design/app_colors.dart';
+import '../core/design/app_spacing.dart';
+import '../core/design/app_radius.dart';
+import '../core/design/app_text_styles.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -8,104 +12,106 @@ class AboutPage extends StatelessWidget {
   Future<void> _openLink(String url) async {
     final uri = Uri.parse(url);
     try {
-      if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-        // ✅ Los SnackBar fueron removidos porque necesitan context
-        // y no podemos garantizar que el context esté disponible en async gaps
-      }
-    } catch (e) {
-      // ✅ Los SnackBar fueron removidos por la misma razón
-    }
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color tealStart = Color(0xFF06B6A4);
-    const Color tealEnd = Color(0xFF0EA5E9);
-
-    final theme = Theme.of(context);
-    final screenWidth = MediaQuery.of(context).size.width;
-    final maxWidth = screenWidth * 0.94;
-
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [tealStart, tealEnd],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHero(context),
+              Expanded(child: _buildContent()),
+            ],
           ),
         ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 18),
-              child: SizedBox(
-                width: maxWidth,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Acerca de',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontSize: 22,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    Card(
-                      clipBehavior: Clip.hardEdge,
-                      elevation: 10,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                        child: Column(
-                          children: [
-                            Text('Nova App', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 6),
-                            Text('v1.0', style: theme.textTheme.bodyMedium),
-                            const SizedBox(height: 12),
-                            Text(
-                              'Prototipo de app para gestión con QR. Desarrollada en Flutter ',
-                              style: theme.textTheme.bodyMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 14),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () => _openLink('https://flutter.dev'), // ✅ REMOVIDO context
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.white,
-                                  foregroundColor: theme.colorScheme.secondary,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 12.0),
-                                  child: Text('Visitar Flutter.dev'),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                  ],
-                ),
-              ),
+      ),
+    );
+  }
+
+  Widget _buildHero(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md, AppSpacing.md, AppSpacing.md, AppSpacing.lg,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AppBackButton(variant: AppBackButtonVariant.onPrimary),
+          const SizedBox(height: AppSpacing.md),
+          const Text(
+            'Acerca de',
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+              letterSpacing: -0.3,
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(AppRadius.xl),
+          topRight: Radius.circular(AppRadius.xl),
+        ),
+      ),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.lg, AppSpacing.lg, AppSpacing.lg, AppSpacing.xxl,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: AppRadius.lgAll,
+              ),
+              child: const Icon(Icons.travel_explore_rounded,
+                  color: AppColors.primary, size: 32),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            const Text('Nova App', style: AppTextStyles.headline),
+            const SizedBox(height: AppSpacing.xs),
+            const Text('Versión 1.0', style: AppTextStyles.bodySm),
+            const SizedBox(height: AppSpacing.md),
+            const Text(
+              'Prototipo de app para gestión de lugares con códigos QR. Desarrollada en Flutter.',
+              style: AppTextStyles.body,
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => _openLink('https://flutter.dev'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: AppColors.onPrimary,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: AppRadius.mdAll),
+                ),
+                child: const Text('Visitar Flutter.dev',
+                    style: AppTextStyles.labelLg),
+              ),
+            ),
+          ],
         ),
       ),
     );

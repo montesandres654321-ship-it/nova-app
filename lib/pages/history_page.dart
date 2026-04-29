@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/scan_record.dart';
 import '../services/api_service.dart';
+import '../core/design/app_back_button.dart';
 import '../core/design/app_colors.dart';
 import '../core/design/app_spacing.dart';
 import '../core/design/app_radius.dart';
@@ -139,6 +140,14 @@ class _HistoryPageState extends State<HistoryPage> {
         elevation: 0,
         scrolledUnderElevation: 1,
         surfaceTintColor: AppColors.surface,
+        automaticallyImplyLeading: false,
+        leadingWidth: 52,
+        leading: Navigator.canPop(context)
+            ? const Padding(
+                padding: EdgeInsets.only(left: AppSpacing.sm),
+                child: Center(child: AppBackButton()),
+              )
+            : null,
         titleTextStyle: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,

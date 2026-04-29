@@ -149,22 +149,56 @@ class AdminService {
     }
   }
 
+  // ─── DASHBOARD SUMMARY (una sola llamada) ─────────────
+  static Future<Map<String, dynamic>> getDashboardSummary() async {
+    try {
+      final r = await ApiClient.get<dynamic>('/dashboard/summary');
+      final d = r.data;
+      if (d is! Map<String, dynamic>) throw ApiException('Formato inválido');
+      return {'success': true, ...d};
+    } catch (e) {
+      debugPrint('❌ getDashboardSummary: $e');
+      return {'success': false, 'error': e.toString()};
+    }
+  }
+
   // ─── ESTADÍSTICAS DASHBOARD ────────────────────────────
   static Future<Map<String, dynamic>> getDashboardStats() async {
     try {
       final r = await ApiClient.get<dynamic>('/stats/dashboard');
       final d = r.data;
       if (d is! Map<String, dynamic>) throw ApiException('Formato inválido');
-      return {'success': true, ...d};
+
+      // Normaliza cualquier formato que devuelva el backend:
+      //   { stats: { users, places, scans, rewards } }
+      //   { users, places, scans, rewards }           (plano)
+      //   { totalUsers, totalPlaces, ... }            (camelCase)
+      final raw = d['stats'] as Map<String, dynamic>? ?? d;
+
+      return {
+        'success': true,
+        'stats': {
+          'users':   _toInt(raw['users']   ?? raw['totalUsers']   ?? d['totalUsers']),
+          'places':  _toInt(raw['places']  ?? raw['totalPlaces']  ?? d['totalPlaces']),
+          'scans':   _toInt(raw['scans']   ?? raw['totalScans']   ?? d['totalScans']),
+          'rewards': _toInt(raw['rewards'] ?? raw['totalRewards'] ?? d['totalRewards']),
+        },
+        'topPlaces':    d['topPlaces']    ?? [],
+        'placesByType': d['placesByType'] ?? {},
+      };
     } catch (e) {
       debugPrint('❌ getDashboardStats: $e');
       return {
-        'success': false, 'error': e.toString(),
+        'success': false,
+        'error': e.toString(),
         'stats': {'users': 0, 'places': 0, 'scans': 0, 'rewards': 0},
-        'scansByDay': [], 'topPlaces': [], 'placesByType': {},
+        'topPlaces': [],
+        'placesByType': {},
       };
     }
   }
+
+  static int _toInt(dynamic v) => v is num ? v.toInt() : 0;
 
   // ─── ESTADÍSTICAS MI LUGAR (user_place) ────────────────
   // FIX: acepta placeId opcional — para que admin vea datos de otro propietario
