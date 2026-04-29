@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import '../core/design/app_colors.dart';
 import 'success_page.dart';
 
 class ScanPage extends StatefulWidget {
@@ -75,12 +76,13 @@ class _ScanPageState extends State<ScanPage> {
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text("No se detectó ningún código QR"), backgroundColor: Colors.orange));
+            content: Text("No se detectó ningún código QR"),
+            backgroundColor: AppColors.warning));
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text("Error: $e"), backgroundColor: Colors.red));
+            content: Text("Error: $e"), backgroundColor: AppColors.error));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -92,9 +94,9 @@ class _ScanPageState extends State<ScanPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Escanear QR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-        backgroundColor: const Color(0xFF06B6A4),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Escanear QR'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: AppColors.onPrimary,
       ),
       body: SafeArea(
         child: Column(children: [
@@ -105,7 +107,7 @@ class _ScanPageState extends State<ScanPage> {
               if (_isProcessing)
                 Container(color: Colors.black54, child: const Center(
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF06B6A4))),
+                    CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary)),
                     SizedBox(height: 16),
                     Text("Procesando código QR...", style: TextStyle(color: Colors.white, fontSize: 16)),
                   ]),
@@ -151,7 +153,7 @@ class ScannerOverlayPainter extends CustomPainter {
     path.addRect(Rect.fromCenter(center: center, width: sq, height: sq));
     canvas.drawPath(path, paint);
 
-    final borderPaint = Paint()..color = const Color(0xFF06B6A4)..style = PaintingStyle.stroke..strokeWidth = 3;
+    final borderPaint = Paint()..color = AppColors.primary..style = PaintingStyle.stroke..strokeWidth = 3;
     final rect = Rect.fromCenter(center: center, width: sq, height: sq);
     const cl = 25.0;
 
