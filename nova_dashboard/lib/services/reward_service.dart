@@ -1,8 +1,9 @@
 // lib/services/reward_service.dart
 // ============================================================
-// FIX: IP centralizada + parsing data['data'] + método redeemReward
+// FIX: response.data correcto (sin markdown links)
 // ============================================================
 
+import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 import '../models/reward_model.dart';
 
@@ -22,7 +23,7 @@ class RewardService {
       }
       return [];
     } catch (e) {
-      print('❌ Error en getAllRewards: $e');
+      debugPrint('❌ Error en getAllRewards: $e');
       return [];
     }
   }
@@ -31,9 +32,11 @@ class RewardService {
   static Future<Map<String, dynamic>> redeemReward(int rewardId) async {
     try {
       final response = await ApiClient.patch<dynamic>('/rewards/$rewardId/redeem');
-      return {'success': true, 'message': response.data?['message'] ?? 'Canjeada'};
+      final data = response.data;
+      final message = (data is Map<String, dynamic>) ? (data['message'] ?? 'Canjeada') : 'Canjeada';
+      return {'success': true, 'message': message};
     } catch (e) {
-      print('❌ Error en redeemReward: $e');
+      debugPrint('❌ Error en redeemReward: $e');
       throw Exception('Error al canjear recompensa: $e');
     }
   }
@@ -46,7 +49,7 @@ class RewardService {
       final redeemed = allRewards.where((r) => r.isRedeemedBool).length;
       return {'total': total, 'redeemed': redeemed, 'pending': total - redeemed};
     } catch (e) {
-      print('❌ Error en getRewardStats: $e');
+      debugPrint('❌ Error en getRewardStats: $e');
       return {'total': 0, 'redeemed': 0, 'pending': 0};
     }
   }
@@ -57,7 +60,7 @@ class RewardService {
       final allRewards = await getAllRewards();
       return allRewards.where((r) => !r.isRedeemedBool).toList();
     } catch (e) {
-      print('❌ Error en getPendingRewards: $e');
+      debugPrint('❌ Error en getPendingRewards: $e');
       return [];
     }
   }
@@ -68,7 +71,7 @@ class RewardService {
       final allRewards = await getAllRewards();
       return allRewards.where((r) => r.isRedeemedBool).toList();
     } catch (e) {
-      print('❌ Error en getRedeemedRewards: $e');
+      debugPrint('❌ Error en getRedeemedRewards: $e');
       return [];
     }
   }
@@ -79,7 +82,7 @@ class RewardService {
       final allRewards = await getAllRewards();
       return allRewards.where((r) => r.placeId == placeId).toList();
     } catch (e) {
-      print('❌ Error en getRewardsByPlace: $e');
+      debugPrint('❌ Error en getRewardsByPlace: $e');
       return [];
     }
   }

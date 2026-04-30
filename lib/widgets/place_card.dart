@@ -166,10 +166,10 @@ class _PlaceCardState extends State<PlaceCard> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.10),
+                color: AppColors.warning.withValues(alpha: 0.10),
                 borderRadius: AppRadius.smAll,
                 border: Border.all(
-                  color: Colors.amber.withValues(alpha: 0.30),
+                  color: AppColors.warning.withValues(alpha: 0.30),
                 ),
               ),
               child: Row(
@@ -185,7 +185,7 @@ class _PlaceCardState extends State<PlaceCard> {
                       widget.place.rewardName ?? 'Recompensa disponible',
                       style: TextStyle(
                         fontSize: 11,
-                        color: Colors.amber[800],
+                        color: AppColors.warning,
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,

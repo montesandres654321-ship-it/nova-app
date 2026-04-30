@@ -418,7 +418,7 @@ class ApiService {
       final headers = await _authHeaders();
 
       final response = await http.patch(
-        Uri.parse(AppConstants.buildUrl('/rewards/$rewardId/redeem')),
+        Uri.parse(AppConstants.buildUrl('${AppConstants.redeemRewardEndpoint}/$rewardId/redeem')),
         headers: headers,
       ).timeout(AppConstants.timeoutNormal);
 

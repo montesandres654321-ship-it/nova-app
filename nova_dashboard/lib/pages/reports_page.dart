@@ -169,7 +169,7 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Widget _buildRankingChart() {
-    final cd = _topPlaces.take(6).map((p) => {'label': p['name']?.toString() ?? '', 'value': p['total_scans'] ?? 0}).toList();
+    final cd = _topPlaces.take(6).map((p) => {'label': p['name']?.toString() ?? '', 'value': p['totalScans'] ?? p['total_scans'] ?? 0}).toList();
     return Container(decoration: _cardDec(), child: Padding(padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [

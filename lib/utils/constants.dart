@@ -14,7 +14,7 @@ class AppConstants {
 
   // ─── Backend ────────────────────────────────────────────
   // ⚠️ Cambiar esta IP cuando se mueva el servidor
-  static const String backendUrl = 'http://172.17.10.224:3000';
+  static const String backendUrl = 'http://192.168.18.6:3000';
 
   // ─── Endpoints AUTH ─────────────────────────────────────
   static const String loginEndpoint       = '/login';
@@ -35,6 +35,7 @@ class AppConstants {
   static const String userProfileEndpoint  = '/users/me/profile';
   static const String userPasswordEndpoint = '/users/me/password';
   static const String userRewardsEndpoint  = '/rewards/user'; // + /{userId}
+  static const String redeemRewardEndpoint = '/rewards'; // + /$id/redeem
 
   // ─── Endpoints HEALTH ───────────────────────────────────
   static const String healthEndpoint = '/health';

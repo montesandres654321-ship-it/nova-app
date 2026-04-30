@@ -54,7 +54,7 @@ class _ScansPageState extends State<ScansPage> {
           _buildStatsCards(isWide), const SizedBox(height: 20),
           if (_scansByDay.isNotEmpty) ...[
             LineChartWidget(title: 'Escaneos por Día', subtitle: 'Últimos 7 días',
-                data: _scansByDay.map((i) => {'label': i['day']?.toString() ?? '', 'value': (i['count'] as num?)?.toInt() ?? 0}).toList(),
+                data: _scansByDay.map((i) => {'label': i['date']?.toString() ?? '', 'value': (i['count'] as num?)?.toInt() ?? 0}).toList(),
                 color: _teal, fillArea: true, height: 280),
             const SizedBox(height: 20),
           ],

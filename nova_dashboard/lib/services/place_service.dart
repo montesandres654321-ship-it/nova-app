@@ -1,12 +1,9 @@
 // lib/services/place_service.dart
 // ============================================================
-// FIX CRÍTICO: reward_stock ahora se envía en createPlace y updatePlace
-// CAMBIOS:
-//   1. createPlace: agrega reward_stock al body
-//   2. updatePlace: agrega reward_stock al body
-//   3. Ambos envían has_reward como boolean (true/false) no como int
+// FIX: import foundation.dart para debugPrint
 // ============================================================
 
+import 'package:flutter/foundation.dart';
 import 'api_client.dart';
 import '../models/place.dart';
 
@@ -33,7 +30,7 @@ class PlaceService {
           .map((json) => Place.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('❌ Error en getAllPlaces: $e');
+      debugPrint('❌ Error en getAllPlaces: $e');
       rethrow;
     }
   }
@@ -56,13 +53,12 @@ class PlaceService {
       }
       return Place.fromJson(data);
     } catch (e) {
-      print('❌ Error en getPlaceById: $e');
+      debugPrint('❌ Error en getPlaceById: $e');
       rethrow;
     }
   }
 
   // ── CREAR LUGAR ───────────────────────────────────────
-  // FIX: ahora envía reward_stock + has_reward como boolean
   static Future<Map<String, dynamic>> createPlace(Place place) async {
     try {
       final body = <String, dynamic>{
@@ -81,24 +77,22 @@ class PlaceService {
       if (place.priceRange != null) body['price_range']           = place.priceRange;
       if (place.amenities.isNotEmpty) body['amenities']           = place.amenities;
 
-      // FIX: campos de recompensa completos
       if (place.rewardName        != null) body['reward_name']        = place.rewardName;
       if (place.rewardDescription != null) body['reward_description'] = place.rewardDescription;
       if (place.rewardIcon        != null) body['reward_icon']        = place.rewardIcon;
-      body['reward_stock'] = place.rewardStock; // null = ilimitado, int = limitado
+      body['reward_stock'] = place.rewardStock;
 
       if (place.ownerAdminId != null) body['owner_id'] = place.ownerAdminId;
 
       final response = await ApiClient.post<dynamic>('/places', body: body);
       return {'success': true, 'message': 'Lugar creado exitosamente', 'data': response.data};
     } catch (e) {
-      print('❌ Error en createPlace: $e');
+      debugPrint('❌ Error en createPlace: $e');
       return {'success': false, 'error': e.toString()};
     }
   }
 
   // ── ACTUALIZAR LUGAR ──────────────────────────────────
-  // FIX: ahora envía reward_stock + has_reward como boolean
   static Future<Map<String, dynamic>> updatePlace(int id, Place place) async {
     try {
       final body = <String, dynamic>{
@@ -117,18 +111,17 @@ class PlaceService {
       if (place.phone      != null) body['phone']                  = place.phone;
       if (place.priceRange != null) body['price_range']            = place.priceRange;
 
-      // FIX: campos de recompensa completos
       if (place.rewardName        != null) body['reward_name']        = place.rewardName;
       if (place.rewardDescription != null) body['reward_description'] = place.rewardDescription;
       if (place.rewardIcon        != null) body['reward_icon']        = place.rewardIcon;
-      body['reward_stock'] = place.rewardStock; // null = ilimitado, int = limitado
+      body['reward_stock'] = place.rewardStock;
 
       body['owner_id'] = place.ownerAdminId;
 
       final response = await ApiClient.put<dynamic>('/places/$id', body: body);
       return {'success': true, 'message': 'Lugar actualizado exitosamente', 'data': response.data};
     } catch (e) {
-      print('❌ Error en updatePlace: $e');
+      debugPrint('❌ Error en updatePlace: $e');
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -139,7 +132,7 @@ class PlaceService {
       final response = await ApiClient.delete<dynamic>('/places/$id');
       return {'success': response.success, 'message': 'Lugar desactivado'};
     } catch (e) {
-      print('❌ Error en deletePlace: $e');
+      debugPrint('❌ Error en deletePlace: $e');
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -147,12 +140,15 @@ class PlaceService {
   // ── ESTADÍSTICAS DEL LUGAR ────────────────────────────
   static Future<Map<String, dynamic>> getPlaceStats(int placeId) async {
     try {
-      final response = await ApiClient.get<dynamic>('/places/my-place/stats?place_id=$placeId');
+      final response = await ApiClient.get<dynamic>(
+        '/places/my-place/stats',
+        queryParams: {'place_id': placeId.toString()},
+      );
       final data = response.data;
       if (data is! Map<String, dynamic>) throw ApiException('Formato inválido');
       return data;
     } catch (e) {
-      print('❌ Error en getPlaceStats: $e');
+      debugPrint('❌ Error en getPlaceStats: $e');
       rethrow;
     }
   }

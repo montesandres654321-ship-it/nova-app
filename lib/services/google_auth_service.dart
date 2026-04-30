@@ -28,7 +28,7 @@ class GoogleAuthService {
         return {'success': false, 'error': 'Inicio de sesión cancelado'};
       }
 
-      debugPrint('🟢 Google autenticado: ${googleUser.email}');
+      debugPrint('🟢 Google autenticado: ID:${googleUser.id}');
 
       // Sincronizar con backend
       final backendResult = await _syncWithBackend(googleUser);

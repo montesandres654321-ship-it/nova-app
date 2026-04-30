@@ -77,7 +77,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   bool get _canEdit => _userRole == AppConstants.roleAdminGeneral;
-  bool get _canViewInfo => _userRole == AppConstants.roleAdminGeneral;
+  bool get _canViewInfo => _userRole == AppConstants.roleAdminGeneral || _userRole == AppConstants.roleUserGeneral;
   bool get _showAdmins => _userRole == AppConstants.roleAdminGeneral;
 
   int get _placesIndex => 1;

@@ -154,6 +154,11 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
     }
   }
 
+  int? _parseStock(String raw) {
+    final v = int.tryParse(raw);
+    return (v == null || v == 0) ? null : v;
+  }
+
   Future<void> _savePlace() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _loading = true);
@@ -183,7 +188,7 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
         rewardName:  _hasReward ? _rewardNameController.text.trim() : null,
         rewardDescription: _hasReward ? _rewardDescriptionController.text.trim() : null,
         rewardIcon:  _hasReward ? _selectedRewardIcon : null,
-        rewardStock: _hasReward ? int.tryParse(_rewardStockController.text.trim()) : null,
+        rewardStock: _hasReward ? _parseStock(_rewardStockController.text.trim()) : null,
         ownerAdminId: _selectedOwnerId,
       );
 

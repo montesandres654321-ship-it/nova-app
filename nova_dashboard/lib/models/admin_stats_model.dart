@@ -98,7 +98,7 @@ class PlaceStats {
   factory PlaceStats.fromJson(Map<String, dynamic> json) {
     return PlaceStats(
       placeName: json['place_name'] ?? '',
-      placeType: json['place_type'] ?? '',
+      placeType: json['place_tipo'] ?? json['place_type'] ?? '',
       placeLocation: json['place_location'] ?? json['lugar'] ?? '',
       placeRating: (json['place_rating'] ?? 0.0).toDouble(),
       totalScans: json['total_scans'] ?? 0,

@@ -11,7 +11,7 @@ class AppConstants {
   // BACKEND URL
   // ⚠️  Cambiar SOLO aquí cuando cambie la IP del servidor
   // ──────────────────────────────────────────────────────────
-  static const String backendUrl = 'http://172.17.10.224:3000';
+  static const String backendUrl = 'http://192.168.18.6:3000';
 
   // ──────────────────────────────────────────────────────────
   // SHARED PREFERENCES KEYS
@@ -40,7 +40,7 @@ class AppConstants {
   static const String createUserEndpoint        = '/admin/users/create';
   static const String editUserEndpoint          = '/admin/users/:id';
   static const String toggleUserEndpoint        = '/admin/users/:id/toggle';
-  static const String changePasswordEndpoint    = '/users/change-password';
+  static const String changePasswordEndpoint    = '/users/me/password';
 
   // ──────────────────────────────────────────────────────────
   // ENDPOINTS — LUGARES
@@ -71,7 +71,6 @@ class AppConstants {
   // ENDPOINTS — ESTADÍSTICAS DASHBOARD
   // ──────────────────────────────────────────────────────────
   static const String dashboardStatsEndpoint    = '/stats/dashboard';
-  static const String analyticsGeneralEndpoint  = '/analytics/stats/general';
   static const String analyticsUsersEndpoint    = '/analytics/users/stats';
   static const String analyticsPlacesEndpoint   = '/analytics/places/stats';
 
@@ -79,7 +78,7 @@ class AppConstants {
   // ENDPOINTS — PROPIETARIOS
   // ──────────────────────────────────────────────────────────
   static const String ownersEndpoint            = '/api/admins/owners';
-  static const String ownersWithoutPlaceEndpoint = '/analytics/admins/owners-without-place';
+  static const String ownersWithoutPlaceEndpoint = '/api/admins/owners/without-place';
   static const String adminsWithDetailsEndpoint = '/analytics/admins/users-with-details';
 
   // ──────────────────────────────────────────────────────────
