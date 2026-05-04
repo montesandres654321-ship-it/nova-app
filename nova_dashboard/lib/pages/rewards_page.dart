@@ -100,30 +100,46 @@ class _RewardsPageState extends State<RewardsPage> {
     ];
     if (isWide) return GridView.count(crossAxisCount: 4, shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 12, crossAxisSpacing: 12,
-        childAspectRatio: 1.8, children: cards);
+        childAspectRatio: 2.4, children: cards);
     return GridView.count(crossAxisCount: 2, shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(), mainAxisSpacing: 10, crossAxisSpacing: 10,
-        childAspectRatio: 2.0, children: cards);
+        childAspectRatio: 2.2, children: cards);
   }
 
   Widget _statCard(String title, String value, IconData icon, Color color, String? tapFilter) => InkWell(
       onTap: tapFilter != null ? () => _navigateToDetail(tapFilter) : null, borderRadius: BorderRadius.circular(12),
-      child: Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withOpacity(0.15)),
-              boxShadow: [BoxShadow(color: color.withOpacity(0.07), blurRadius: 8, offset: const Offset(0, 3))]),
-          child: Row(children: [
-            Container(padding: const EdgeInsets.all(7), decoration: BoxDecoration(
-                color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: color, size: 18)),
-            const SizedBox(width: 10),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-              Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color, height: 1.1)),
-              Text(title, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-              if (tapFilter != null) Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.open_in_new_rounded, size: 10, color: color.withOpacity(0.6)), const SizedBox(width: 3),
-                Text('Ver detalle', style: TextStyle(fontSize: 9, color: color.withOpacity(0.7)))]),
-            ]))])));
+      child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2)),
+            ],
+          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            // Franja de color superior (único acento de color)
+            Container(height: 3, decoration: BoxDecoration(
+              color: color,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+            )),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(9)),
+                    child: Icon(icon, color: color, size: 16)),
+                const SizedBox(width: 10),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF0F172A), height: 1.1)),
+                  Text(title, style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280))),
+                  if (tapFilter != null) Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.open_in_new_rounded, size: 10, color: color.withOpacity(0.5)), const SizedBox(width: 3),
+                    Text('Ver detalle', style: TextStyle(fontSize: 9, color: color.withOpacity(0.6)))]),
+                ])),
+              ]),
+            ),
+          ])));
 
   Widget _buildLineChart() {
     if (_rewardsByDay.isEmpty) return _emptyChart('Sin actividad en este período');
@@ -145,7 +161,8 @@ class _RewardsPageState extends State<RewardsPage> {
   }
 
   Widget _emptyChart(String msg) => Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-      boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.07), blurRadius: 8)]),
+      border: Border.all(color: const Color(0xFFE5E7EB)),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3))]),
       child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         Icon(Icons.bar_chart_rounded, size: 44, color: Colors.grey[300]), const SizedBox(height: 8),
         Text(msg, style: TextStyle(fontSize: 12, color: Colors.grey[500]))])));

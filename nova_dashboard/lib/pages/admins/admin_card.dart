@@ -52,10 +52,16 @@ class AdminCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
             color: isActive ? _kBorder : const Color(0xFFEEF2F7)),
-        boxShadow: [BoxShadow(
-          color: Colors.black.withOpacity(isActive ? 0.04 : 0.02),
-          blurRadius: 8, offset: const Offset(0, 2),
-        )],
+        boxShadow: [
+          BoxShadow(
+            color: roleClr.withOpacity(isActive ? 0.07 : 0.02),
+            blurRadius: 12, offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(isActive ? 0.04 : 0.02),
+            blurRadius: 6, offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
@@ -138,10 +144,10 @@ class AdminCard extends StatelessWidget {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: roleClr.withOpacity(0.07),
+                                color: roleClr.withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                    color: roleClr.withOpacity(0.18)),
+                                    color: roleClr.withOpacity(0.28)),
                               ),
                               child: Text(
                                 '${admin.roleEmoji} ${admin.roleLabel}',
@@ -280,15 +286,15 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isActive ? _kGreen : _kTextSub;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.10),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withOpacity(0.35)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(
-          width: 5, height: 5,
+          width: 6, height: 6,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
@@ -296,7 +302,7 @@ class _StatusBadge extends StatelessWidget {
           isActive ? 'Activo' : 'Inactivo',
           style: TextStyle(
               fontSize: 10, color: color,
-              fontWeight: FontWeight.w600, letterSpacing: 0.2),
+              fontWeight: FontWeight.w700, letterSpacing: 0.2),
         ),
       ]),
     );

@@ -571,16 +571,16 @@ class _ActivityFeedItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
             decoration: BoxDecoration(
-              color: typeColor.withOpacity(0.05),
+              color: typeColor.withOpacity(0.10),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: typeColor.withOpacity(0.12)),
+              border: Border.all(color: typeColor.withOpacity(0.25)),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
               Text(typeEmoji, style: const TextStyle(fontSize: 11)),
               const SizedBox(width: 4),
               Text(typeLabel,
                   style: TextStyle(
-                      fontSize: 11, color: typeColor, fontWeight: FontWeight.w500)),
+                      fontSize: 11, color: typeColor, fontWeight: FontWeight.w600)),
             ]),
           ),
       ]),
@@ -604,7 +604,7 @@ class _KpiItem {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// KPI CARD — con accent strip superior
+// KPI CARD — compact horizontal layout con accent strip superior
 // ─────────────────────────────────────────────────────────────────────────────
 class _KpiCard extends StatelessWidget {
   final _KpiItem item;
@@ -614,17 +614,17 @@ class _KpiCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: item.onTap,
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Container(
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: _kBorder),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withOpacity(0.05),
                 blurRadius: 10, offset: const Offset(0, 2),
               ),
             ],
@@ -632,44 +632,37 @@ class _KpiCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
 
             // Accent strip (3px colored top bar)
-            Container(
-              height: 3,
-              decoration: BoxDecoration(color: item.color),
-            ),
+            Container(height: 3, color: item.color),
 
-            // Card content
+            // Card content — horizontal compact layout
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-                // Icon + chevron row
-                Row(children: [
-                  Container(
-                    width: 34, height: 34,
-                    decoration: BoxDecoration(
-                      color: item.color.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    child: Icon(item.icon, color: item.color, size: 17),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    color: item.color.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(9),
                   ),
-                  const Spacer(),
-                  Icon(Icons.north_east_rounded, size: 14, color: _kBorder),
-                ]),
-                const SizedBox(height: 20),
-
-                // Number
-                Text(
-                  _fmt(item.value),
-                  style: const TextStyle(
-                    fontSize: 36, fontWeight: FontWeight.w800,
-                    color: _kTextHead, height: 1.0,
-                  ),
+                  child: Icon(item.icon, color: item.color, size: 18),
                 ),
-                const SizedBox(height: 5),
-
-                // Label
-                Text(item.label,
-                    style: const TextStyle(fontSize: 13, color: _kTextMuted)),
+                const SizedBox(width: 12),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _fmt(item.value),
+                      style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.w800,
+                        color: _kTextHead, height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(item.label,
+                        style: const TextStyle(fontSize: 11, color: _kTextMuted)),
+                  ],
+                )),
               ]),
             ),
           ]),

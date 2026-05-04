@@ -31,96 +31,109 @@ class StatCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
         child: Container(
-          padding: const EdgeInsets.all(AppTheme.spaceLG),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-            boxShadow: AppTheme.shadowSM,
-            border: Border.all(
-              color: color.withOpacity(0.1),
-              width: 2,
-            ),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: Icono y Trend
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Icono
-                  Container(
-                    padding: const EdgeInsets.all(AppTheme.spaceSM),
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: color,
-                      size: 24,
-                    ),
-                  ),
+              // Franja de color superior
+              Container(
+                height: 3,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(AppTheme.radiusMD - 1)),
+                ),
+              ),
 
-                  // Trend badge (si existe)
-                  if (trend != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AppTheme.spaceSM,
-                        vertical: AppTheme.spaceXXS,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getTrendColor().withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            _getTrendIcon(),
-                            size: 14,
-                            color: _getTrendColor(),
+              Padding(
+                padding: const EdgeInsets.all(AppTheme.spaceLG),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header: Icono y Trend
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Icono
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.10),
+                            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
                           ),
-                          const SizedBox(width: AppTheme.spaceXXS),
-                          Text(
-                            trend!,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: _getTrendColor(),
+                          child: Icon(icon, color: color, size: 18),
+                        ),
+
+                        // Trend badge (si existe)
+                        if (trend != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.spaceSM,
+                              vertical: AppTheme.spaceXXS,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getTrendColor().withOpacity(0.1),
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusSM),
+                              border: Border.all(
+                                  color: _getTrendColor().withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(_getTrendIcon(),
+                                    size: 14, color: _getTrendColor()),
+                                const SizedBox(width: AppTheme.spaceXXS),
+                                Text(trend!,
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: _getTrendColor())),
+                              ],
                             ),
                           ),
-                        ],
+                      ],
+                    ),
+
+                    const SizedBox(height: AppTheme.spaceMD),
+
+                    // Valor principal
+                    Text(
+                      value,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.gray900,
+                        height: 1.1,
                       ),
                     ),
-                ],
-              ),
 
-              const SizedBox(height: AppTheme.spaceMD),
+                    const SizedBox(height: AppTheme.spaceXS),
 
-              // Valor principal
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.gray900,
-                  height: 1,
+                    // Título
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.gray500,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-              ),
-
-              const SizedBox(height: AppTheme.spaceXS),
-
-              // Título
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: AppTheme.gray600,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),

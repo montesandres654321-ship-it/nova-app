@@ -1,11 +1,4 @@
 // lib/pages/places/form_page.dart
-// ============================================================
-// CAMBIOS vs versión anterior:
-//   1. _hasReward = true por defecto al crear nuevo lugar
-//      (al editar, mantiene el valor del lugar existente)
-//   2. Campos de recompensa siempre visibles cuando _hasReward=true
-//      ya no están ocultos detrás del checkbox
-// ============================================================
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -45,10 +38,9 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
   bool    _loadingOwners = false;
   PlatformFile? _selectedImageFile;
 
-  String _selectedType      = 'hotel';
-  bool   _isActive          = true;
-  // CAMBIO: true por defecto al crear nuevo lugar
-  bool   _hasReward         = true;
+  String _selectedType       = 'hotel';
+  bool   _isActive           = true;
+  bool   _hasReward          = true;
   String _selectedRewardIcon = '☕';
 
   final List<String> _types = ['hotel', 'restaurant', 'bar'];
@@ -64,7 +56,9 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
     {'icon': '🎫', 'label': 'Cupón'},
   ];
 
-  static const _teal = Color(0xFF06B6A4);
+  static const _teal   = Color(0xFF06B6A4);
+  static const _border = Color(0xFFE5E7EB);
+  static const _bg     = Color(0xFFF8FAFC);
 
   @override
   void initState() {
@@ -85,13 +79,12 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
     _rewardStockController = TextEditingController(
         text: p?.rewardStock?.toString() ?? '');
     if (p != null) {
-      _selectedType      = p.tipo;
-      _isActive          = p.isActive;
-      _hasReward         = p.hasReward;
+      _selectedType       = p.tipo;
+      _isActive           = p.isActive;
+      _hasReward          = p.hasReward;
       _selectedRewardIcon = p.rewardIcon ?? '☕';
-      _selectedOwnerId   = p.ownerAdminId;
+      _selectedOwnerId    = p.ownerAdminId;
     }
-    // Si es nuevo lugar (place == null), _hasReward ya es true por defecto
   }
 
   @override
@@ -246,9 +239,12 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
       SnackBar(content: Text(msg), backgroundColor: Colors.red,
           duration: const Duration(seconds: 4)));
 
+  // ── BUILD ────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: _bg,
       appBar: AppBar(
         leading: const BackButton(color: Colors.white),
         title: Text(widget.place == null ? 'Nuevo Lugar' : 'Editar Lugar'),
@@ -264,342 +260,357 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
       ),
       body: (_loading || _uploadingImage)
           ? Center(child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const CircularProgressIndicator(color: _teal),
-            const SizedBox(height: 16),
-            Text(_uploadingImage ? 'Subiendo imagen...' : 'Guardando...',
-                style: const TextStyle(fontSize: 16)),
-          ]))
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: _teal),
+                const SizedBox(height: 16),
+                Text(_uploadingImage ? 'Subiendo imagen...' : 'Guardando...',
+                    style: const TextStyle(fontSize: 16)),
+              ]))
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 860),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              padding: const EdgeInsets.all(24),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1000),
+                  child: Form(
+                    key: _formKey,
+                    child: LayoutBuilder(
+                      builder: (ctx, constraints) {
+                        final isWide = constraints.maxWidth > 900;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
 
-                  // ── Sección 1: Información básica ──────────
-                  _sectionCard('Información Básica', [
-                    _row([
-                      Expanded(flex: 2, child: _field(
-                          controller: _nameController,
-                          label: 'Nombre del lugar',
-                          icon: Icons.business,
-                          validator: (v) =>
-                          v?.isEmpty ?? true ? 'Requerido' : null)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _dropdown(
-                          value: _selectedType,
-                          label: 'Tipo',
-                          icon: Icons.category,
-                          items: _types,
-                          onChanged: (v) =>
-                              setState(() => _selectedType = v!))),
-                    ]),
-                    const SizedBox(height: 12),
-                    _field(
-                        controller: _lugarController,
-                        label: 'Municipio / Lugar',
-                        icon: Icons.location_on,
-                        validator: (v) =>
-                        v?.isEmpty ?? true ? 'Requerido' : null),
-                    const SizedBox(height: 12),
-                    _field(
-                        controller: _descriptionController,
-                        label: 'Descripción',
-                        icon: Icons.description,
-                        maxLines: 3,
-                        validator: (v) =>
-                        v?.isEmpty ?? true ? 'Requerido' : null),
-                  ]),
+                            // ── Columnas ──────────────────────────────
+                            if (isWide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Columna izquierda (60%)
+                                  Expanded(flex: 3, child: Column(
+                                    children: [
+                                      _sectionCard('Información Básica',
+                                          _buildInfoBasica()),
+                                      const SizedBox(height: 16),
+                                      _sectionCard('Imagen del Lugar',
+                                          _buildImagen()),
+                                    ],
+                                  )),
+                                  const SizedBox(width: 16),
+                                  // Columna derecha (40%)
+                                  Expanded(flex: 2, child: Column(
+                                    children: [
+                                      _sectionCard('Detalles',
+                                          _buildDetalles()),
+                                      const SizedBox(height: 16),
+                                      _sectionCard('Propietario (Opcional)',
+                                          _buildPropietario()),
+                                    ],
+                                  )),
+                                ],
+                              )
+                            else ...[
+                              _sectionCard('Información Básica',
+                                  _buildInfoBasica()),
+                              const SizedBox(height: 16),
+                              _sectionCard('Imagen del Lugar',
+                                  _buildImagen()),
+                              const SizedBox(height: 16),
+                              _sectionCard('Detalles',
+                                  _buildDetalles()),
+                              const SizedBox(height: 16),
+                              _sectionCard('Propietario (Opcional)',
+                                  _buildPropietario()),
+                            ],
 
-                  const SizedBox(height: 16),
+                            const SizedBox(height: 16),
 
-                  // ── Sección 2: Imagen ──────────────────────
-                  _sectionCard('Imagen del Lugar', [
-                    _row([
-                      Expanded(child: _field(
-                          controller: _imageUrlController,
-                          label: 'URL de imagen (opcional)',
-                          icon: Icons.link,
-                          hint: 'https://...')),
-                      const SizedBox(width: 16),
-                      Expanded(child: OutlinedButton.icon(
-                          onPressed: _uploadingImage ? null : _pickImage,
-                          icon: const Icon(Icons.upload_file),
-                          label: Text(_selectedImageFile != null
-                              ? _selectedImageFile!.name
-                              : 'Subir desde archivo',
-                              overflow: TextOverflow.ellipsis),
-                          style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 14, horizontal: 12),
-                              side: const BorderSide(color: _teal),
-                              foregroundColor: _teal))),
-                    ]),
-                    if (_selectedImageFile != null) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                              color: Colors.green[50],
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: Colors.green)),
-                          child: Row(children: [
-                            const Icon(Icons.check_circle,
-                                color: Colors.green, size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(
-                                '${_selectedImageFile!.name} (${(_selectedImageFile!.size / 1024).toStringAsFixed(0)} KB)',
-                                style: const TextStyle(fontSize: 12),
-                                overflow: TextOverflow.ellipsis)),
-                            IconButton(
-                                icon: const Icon(Icons.close,
-                                    color: Colors.red, size: 18),
-                                onPressed: () => setState(
-                                        () => _selectedImageFile = null),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints()),
-                          ])),
-                    ],
-                  ]),
+                            // ── Recompensa (ancho completo) ───────────
+                            _sectionCard('🎁 Recompensa para Turistas',
+                                _buildRecompensa()),
 
-                  const SizedBox(height: 16),
+                            const SizedBox(height: 28),
 
-                  // ── Sección 3: Detalles ────────────────────
-                  _sectionCard('Detalles', [
-                    _row([
-                      Expanded(child: _field(
-                          controller: _addressController,
-                          label: 'Dirección',
-                          icon: Icons.home)),
-                      const SizedBox(width: 16),
-                      Expanded(child: _field(
-                          controller: _phoneController,
-                          label: 'Teléfono',
-                          icon: Icons.phone)),
-                    ]),
-                    const SizedBox(height: 12),
-                    _field(
-                        controller: _amenitiesController,
-                        label: 'Servicios (separados por coma)',
-                        icon: Icons.list,
-                        hint: 'Wifi, Piscina, A/C'),
-                    const SizedBox(height: 12),
-                    SwitchListTile(
-                      title: const Text('Lugar activo',
-                          style: TextStyle(fontSize: 13)),
-                      subtitle: Text(
-                          _isActive ? 'Visible en la app' : 'Oculto',
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey[600])),
-                      value: _isActive,
-                      onChanged: (v) => setState(() => _isActive = v),
-                      activeColor: _teal,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ]),
-
-                  const SizedBox(height: 16),
-
-                  // ── Sección 4: Recompensa ──────────────────
-                  // CAMBIO: campos siempre visibles, checkbox activado por defecto
-                  _sectionCard('🎁 Recompensa para Turistas', [
-
-                    // Toggle activar/desactivar recompensa
-                    SwitchListTile(
-                      title: const Text('Recompensa activa',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                      subtitle: Text(
-                          _hasReward
-                              ? 'Los turistas ganan al escanear el QR'
-                              : 'No se otorga recompensa al escanear',
-                          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
-                      value: _hasReward,
-                      onChanged: (v) => setState(() => _hasReward = v),
-                      activeColor: _teal,
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-
-                    // Campos de recompensa — siempre visibles cuando activo
-                    if (_hasReward) ...[
-                      const SizedBox(height: 12),
-
-                      // Selector de ícono
-                      const Text('Ícono de la recompensa:',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 8),
-                      Wrap(spacing: 8, runSpacing: 8,
-                          children: _rewardIcons.map((item) {
-                            final sel = _selectedRewardIcon == item['icon'];
-                            return InkWell(
-                                onTap: () => setState(
-                                        () => _selectedRewardIcon = item['icon']!),
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                        color: sel
-                                            ? _teal.withOpacity(0.15)
-                                            : Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                            color: sel ? _teal : Colors.transparent,
-                                            width: 2)),
-                                    child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(item['icon']!,
-                                              style: const TextStyle(fontSize: 24)),
-                                          const SizedBox(height: 2),
-                                          Text(item['label']!,
-                                              style: TextStyle(
-                                                  fontSize: 9,
-                                                  color: sel
-                                                      ? _teal : Colors.grey[700])),
-                                        ])));
-                          }).toList()),
-                      const SizedBox(height: 14),
-
-                      // Nombre + Descripción en fila
-                      _row([
-                        Expanded(child: _field(
-                            controller: _rewardNameController,
-                            label: 'Nombre de la recompensa',
-                            icon: Icons.card_giftcard,
-                            hint: 'Ej: Café gratis',
-                            validator: _hasReward
-                                ? (v) => v?.isEmpty ?? true
-                                ? 'Requerido' : null
-                                : null)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _field(
-                            controller: _rewardDescriptionController,
-                            label: 'Descripción',
-                            icon: Icons.info_outline,
-                            hint: 'Ej: 1 café americano mediano')),
-                      ]),
-                      const SizedBox(height: 12),
-
-                      // Stock
-                      TextFormField(
-                        controller: _rewardStockController,
-                        keyboardType: TextInputType.number,
-                        style: const TextStyle(fontSize: 13),
-                        decoration: _inputDecoration(
-                          'Stock disponible (vacío = ilimitado)',
-                          Icons.inventory_2_outlined,
-                          hint: 'Ej: 50 — dejar vacío para sin límite',
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) return null;
-                          if (int.tryParse(v.trim()) == null) return 'Debe ser un número';
-                          if (int.parse(v.trim()) < 0) return 'Debe ser positivo';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Vacío o 0 = sin límite de recompensas',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                      ),
-                    ] else ...[
-                      // Mensaje cuando está desactivada
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.orange[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.orange[200]!),
-                        ),
-                        child: Row(children: [
-                          Icon(Icons.info_outline, size: 16, color: Colors.orange[700]),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(
-                            'Activa la recompensa para que los turistas reciban un premio al escanear el código QR del establecimiento.',
-                            style: TextStyle(fontSize: 11, color: Colors.orange[800]),
-                          )),
-                        ]),
-                      ),
-                    ],
-                  ]),
-
-                  const SizedBox(height: 16),
-
-                  // ── Sección 5: Propietario ─────────────────
-                  _sectionCard('Propietario (Opcional)', [
-                    _loadingOwners
-                        ? const Center(child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(color: _teal)))
-                        : DropdownButtonFormField<int>(
-                        value: _selectedOwnerId,
-                        decoration: _inputDecoration(
-                            'Asignar propietario',
-                            Icons.person,
-                            hint: 'Sin propietario (opcional)'),
-                        items: [
-                          const DropdownMenuItem<int>(
-                              value: null,
-                              child: Text('Sin propietario')),
-                          ..._availableOwners.map((o) =>
-                              DropdownMenuItem<int>(
-                                  value: o.id,
-                                  child: Text(
-                                      '${o.displayName} — ${o.email}',
-                                      overflow: TextOverflow.ellipsis))),
-                        ],
-                        onChanged: (v) =>
-                            setState(() => _selectedOwnerId = v)),
-                  ]),
-
-                  const SizedBox(height: 28),
-
-                  // ── Botón guardar ──────────────────────────
-                  SizedBox(
-                    width: double.infinity, height: 48,
-                    child: ElevatedButton.icon(
-                      onPressed: (_loading || _uploadingImage)
-                          ? null : _savePlace,
-                      icon: (_loading || _uploadingImage)
-                          ? const SizedBox(width: 18, height: 18,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.save),
-                      label: Text(
-                          (_loading || _uploadingImage)
-                              ? (_uploadingImage
-                              ? 'Subiendo imagen...'
-                              : 'Guardando...')
-                              : (widget.place == null
-                              ? 'Crear Lugar'
-                              : 'Actualizar Lugar'),
-                          style: const TextStyle(fontSize: 15)),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: _teal,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12))),
+                            // ── Botón guardar (derecha) ───────────────
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                SizedBox(
+                                  width: isWide ? 220 : double.infinity,
+                                  height: 48,
+                                  child: ElevatedButton.icon(
+                                    onPressed: (_loading || _uploadingImage)
+                                        ? null : _savePlace,
+                                    icon: (_loading || _uploadingImage)
+                                        ? const SizedBox(width: 18, height: 18,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2, color: Colors.white))
+                                        : const Icon(Icons.save),
+                                    label: Text(
+                                        (_loading || _uploadingImage)
+                                            ? (_uploadingImage
+                                                ? 'Subiendo imagen...'
+                                                : 'Guardando...')
+                                            : (widget.place == null
+                                                ? 'Crear Lugar'
+                                                : 'Actualizar Lugar'),
+                                        style: const TextStyle(fontSize: 15)),
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: _teal,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12))),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(height: 24),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
-      ),
     );
   }
+
+  // ── Contenido por sección ──────────────────────────────────
+
+  List<Widget> _buildInfoBasica() => [
+    _row([
+      Expanded(flex: 2, child: _field(
+          controller: _nameController,
+          label: 'Nombre del lugar',
+          icon: Icons.business,
+          validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null)),
+      const SizedBox(width: 16),
+      Expanded(child: _dropdown(
+          value: _selectedType,
+          label: 'Tipo',
+          icon: Icons.category,
+          items: _types,
+          onChanged: (v) => setState(() => _selectedType = v!))),
+    ]),
+    const SizedBox(height: 12),
+    _field(
+        controller: _lugarController,
+        label: 'Municipio / Lugar',
+        icon: Icons.location_on,
+        validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null),
+    const SizedBox(height: 12),
+    _field(
+        controller: _descriptionController,
+        label: 'Descripción',
+        icon: Icons.description,
+        maxLines: 3,
+        validator: (v) => v?.isEmpty ?? true ? 'Requerido' : null),
+  ];
+
+  List<Widget> _buildImagen() => [
+    _row([
+      Expanded(child: _field(
+          controller: _imageUrlController,
+          label: 'URL de imagen (opcional)',
+          icon: Icons.link,
+          hint: 'https://...')),
+      const SizedBox(width: 16),
+      Expanded(child: OutlinedButton.icon(
+          onPressed: _uploadingImage ? null : _pickImage,
+          icon: const Icon(Icons.upload_file),
+          label: Text(_selectedImageFile != null
+              ? _selectedImageFile!.name
+              : 'Subir desde archivo',
+              overflow: TextOverflow.ellipsis),
+          style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(
+                  vertical: 14, horizontal: 12),
+              side: const BorderSide(color: _teal),
+              foregroundColor: _teal))),
+    ]),
+    if (_selectedImageFile != null) ...[
+      const SizedBox(height: 8),
+      Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+              color: Colors.green[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.green)),
+          child: Row(children: [
+            const Icon(Icons.check_circle, color: Colors.green, size: 18),
+            const SizedBox(width: 8),
+            Expanded(child: Text(
+                '${_selectedImageFile!.name} (${(_selectedImageFile!.size / 1024).toStringAsFixed(0)} KB)',
+                style: const TextStyle(fontSize: 12),
+                overflow: TextOverflow.ellipsis)),
+            IconButton(
+                icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                onPressed: () => setState(() => _selectedImageFile = null),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints()),
+          ])),
+    ],
+  ];
+
+  List<Widget> _buildDetalles() => [
+    _row([
+      Expanded(child: _field(
+          controller: _addressController,
+          label: 'Dirección',
+          icon: Icons.home)),
+      const SizedBox(width: 16),
+      Expanded(child: _field(
+          controller: _phoneController,
+          label: 'Teléfono',
+          icon: Icons.phone)),
+    ]),
+    const SizedBox(height: 12),
+    _field(
+        controller: _amenitiesController,
+        label: 'Servicios (separados por coma)',
+        icon: Icons.list,
+        hint: 'Wifi, Piscina, A/C'),
+    const SizedBox(height: 12),
+    SwitchListTile(
+      title: const Text('Lugar activo', style: TextStyle(fontSize: 13)),
+      subtitle: Text(
+          _isActive ? 'Visible en la app' : 'Oculto',
+          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+      value: _isActive,
+      onChanged: (v) => setState(() => _isActive = v),
+      activeColor: _teal,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+    ),
+  ];
+
+  List<Widget> _buildRecompensa() => [
+    SwitchListTile(
+      title: const Text('Recompensa activa',
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      subtitle: Text(
+          _hasReward
+              ? 'Los turistas ganan al escanear el QR'
+              : 'No se otorga recompensa al escanear',
+          style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+      value: _hasReward,
+      onChanged: (v) => setState(() => _hasReward = v),
+      activeColor: _teal,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+    ),
+    if (_hasReward) ...[
+      const SizedBox(height: 12),
+      const Text('Ícono de la recompensa:',
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 8,
+          children: _rewardIcons.map((item) {
+            final sel = _selectedRewardIcon == item['icon'];
+            return InkWell(
+                onTap: () => setState(() => _selectedRewardIcon = item['icon']!),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                        color: sel ? _teal.withOpacity(0.15) : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                            color: sel ? _teal : Colors.transparent,
+                            width: 2)),
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Text(item['icon']!,
+                          style: const TextStyle(fontSize: 24)),
+                      const SizedBox(height: 2),
+                      Text(item['label']!,
+                          style: TextStyle(
+                              fontSize: 9,
+                              color: sel ? _teal : Colors.grey[700])),
+                    ])));
+          }).toList()),
+      const SizedBox(height: 14),
+      _row([
+        Expanded(child: _field(
+            controller: _rewardNameController,
+            label: 'Nombre de la recompensa',
+            icon: Icons.card_giftcard,
+            hint: 'Ej: Café gratis',
+            validator: _hasReward
+                ? (v) => v?.isEmpty ?? true ? 'Requerido' : null
+                : null)),
+        const SizedBox(width: 16),
+        Expanded(child: _field(
+            controller: _rewardDescriptionController,
+            label: 'Descripción',
+            icon: Icons.info_outline,
+            hint: 'Ej: 1 café americano mediano')),
+      ]),
+      const SizedBox(height: 12),
+      TextFormField(
+        controller: _rewardStockController,
+        keyboardType: TextInputType.number,
+        style: const TextStyle(fontSize: 13),
+        decoration: _inputDecoration(
+          'Stock disponible (vacío = ilimitado)',
+          Icons.inventory_2_outlined,
+          hint: 'Ej: 50 — dejar vacío para sin límite',
+        ),
+        validator: (v) {
+          if (v == null || v.trim().isEmpty) return null;
+          if (int.tryParse(v.trim()) == null) return 'Debe ser un número';
+          if (int.parse(v.trim()) < 0) return 'Debe ser positivo';
+          return null;
+        },
+      ),
+      const SizedBox(height: 4),
+      Text('Vacío o 0 = sin límite de recompensas',
+          style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+    ] else ...[
+      const SizedBox(height: 8),
+      Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.orange[50],
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.orange[200]!),
+        ),
+        child: Row(children: [
+          Icon(Icons.info_outline, size: 16, color: Colors.orange[700]),
+          const SizedBox(width: 8),
+          Expanded(child: Text(
+            'Activa la recompensa para que los turistas reciban un premio al escanear el código QR del establecimiento.',
+            style: TextStyle(fontSize: 11, color: Colors.orange[800]),
+          )),
+        ]),
+      ),
+    ],
+  ];
+
+  List<Widget> _buildPropietario() => [
+    _loadingOwners
+        ? const Center(child: Padding(
+            padding: EdgeInsets.all(12),
+            child: CircularProgressIndicator(color: _teal)))
+        : DropdownButtonFormField<int>(
+            value: _selectedOwnerId,
+            decoration: _inputDecoration(
+                'Asignar propietario',
+                Icons.person,
+                hint: 'Sin propietario (opcional)'),
+            items: [
+              const DropdownMenuItem<int>(
+                  value: null,
+                  child: Text('Sin propietario')),
+              ..._availableOwners.map((o) =>
+                  DropdownMenuItem<int>(
+                      value: o.id,
+                      child: Text(
+                          '${o.displayName} — ${o.email}',
+                          overflow: TextOverflow.ellipsis))),
+            ],
+            onChanged: (v) => setState(() => _selectedOwnerId = v)),
+  ];
 
   // ── Widgets de ayuda ──────────────────────────────────────
 
@@ -608,21 +619,33 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(
-            color: Colors.grey.withOpacity(0.07), blurRadius: 8)],
+        border: Border.all(color: _border),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2)),
+        ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-                border: Border(left: BorderSide(color: _teal, width: 4)),
-                borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(12), topRight: Radius.circular(12))),
-            child: Text(title,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.bold, color: _teal))),
         Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+          child: Row(children: [
+            Container(
+                width: 3, height: 16,
+                decoration: BoxDecoration(
+                    color: _teal, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(width: 10),
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A))),
+          ]),
+        ),
+        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+        Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: children)),
@@ -630,20 +653,37 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
     );
   }
 
-  Widget _row(List<Widget> children) => Row(
-      crossAxisAlignment: CrossAxisAlignment.start, children: children);
+  Widget _row(List<Widget> children) =>
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: children);
 
   InputDecoration _inputDecoration(String label, IconData icon,
       {String? hint}) {
     return InputDecoration(
-      labelText: label, hintText: hint,
-      prefixIcon: Icon(icon, size: 18),
+      labelText: label,
+      hintText: hint,
+      hintStyle: const TextStyle(fontSize: 12, color: Color(0xFFCBD5E1)),
+      labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+      prefixIcon: Icon(icon, size: 17, color: const Color(0xFF94A3B8)),
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      filled: true,
+      fillColor: _bg,
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _border)),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: _border)),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: _teal, width: 1.5)),
+          borderSide: const BorderSide(color: _teal, width: 2)),
+      errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFEF4444))),
+      focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2)),
     );
   }
 
@@ -676,9 +716,9 @@ class _PlaceFormPageState extends State<PlaceFormPage> {
       value: value,
       decoration: _inputDecoration(label, icon),
       style: const TextStyle(fontSize: 13, color: Colors.black87),
-      items: items.map((t) => DropdownMenuItem(
-          value: t,
-          child: Text(labels[t] ?? t))).toList(),
+      items: items
+          .map((t) => DropdownMenuItem(value: t, child: Text(labels[t] ?? t)))
+          .toList(),
       onChanged: onChanged,
     );
   }

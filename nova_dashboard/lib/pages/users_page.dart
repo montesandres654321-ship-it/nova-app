@@ -201,17 +201,40 @@ class _UsersPageState extends State<UsersPage> {
   Widget _buildPageHeader() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(
-          horizontal: AppTheme.spaceLG, vertical: AppTheme.spaceMD),
-      child: Row(children: [
-        Text('Turistas',
-            style: Theme.of(context).textTheme.headlineMedium),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Turistas',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 20, fontWeight: FontWeight.w700,
+                  color: const Color(0xFF0F172A))),
+          const SizedBox(height: 2),
+          const Text('Gestión de usuarios registrados',
+              style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        ]),
         const Spacer(),
-        IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadUsers,
-            tooltip: 'Actualizar'),
+        _buildIconButton(icon: Icons.refresh_rounded, tooltip: 'Actualizar', onTap: _loadUsers),
       ]),
+    );
+  }
+
+  // Botón icono reutilizable
+  Widget _buildIconButton({required IconData icon, required String tooltip, required VoidCallback onTap}) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Icon(icon, size: 18, color: const Color(0xFF64748B)),
+        ),
+      ),
     );
   }
 
@@ -221,26 +244,37 @@ class _UsersPageState extends State<UsersPage> {
           _buildPageHeader(),
           // Barra de búsqueda
           Padding(
-              padding: const EdgeInsets.all(AppTheme.spaceMD),
-              child: TextField(
-                  decoration: InputDecoration(
-                      hintText: 'Buscar turista...',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                      filled: true, fillColor: Colors.grey.shade100),
-                  onChanged: _filterUsers)),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
+              child: Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: TextField(
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF0F172A)),
+                    decoration: const InputDecoration(
+                        hintText: 'Buscar turista...',
+                        hintStyle: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                        prefixIcon: Icon(Icons.search_rounded, size: 18, color: Color(0xFF94A3B8)),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 11)),
+                    onChanged: _filterUsers),
+              )),
 
           // Contador
           if (!_loading && _error.isEmpty)
             Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 6),
                 child: Row(children: [
                   Text('${_filteredUsers.length} turistas',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8),
+                          fontWeight: FontWeight.w500)),
                   if (_searchQuery.isNotEmpty) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text('· filtrando por "$_searchQuery"',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
                   ],
                 ])),
 
@@ -282,7 +316,7 @@ class _UsersPageState extends State<UsersPage> {
               : RefreshIndicator(
               onRefresh: _loadUsers,
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                 itemCount: _filteredUsers.length,
                 itemBuilder: (_, i) => _buildUserCard(_filteredUsers[i]),
               ))),
@@ -290,122 +324,179 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   Widget _buildUserCard(UserModel user) {
-    return Card(
-        margin: const EdgeInsets.only(bottom: 10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          // ← Tap abre UserDetailPage (activado)
-          onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => UserDetailPage(userId: user.id))),
+    return _UserCardItem(
+      user: user,
+      currentRole: _currentRole,
+      // ← Tap abre UserDetailPage
+      onTap: () => Navigator.push(context,
+          MaterialPageRoute(builder: (_) => UserDetailPage(userId: user.id))),
+      // ← Editar solo admin_general
+      onEdit: () { if (_currentRole == 'admin_general') _editUser(user); },
+      onToggle: () => _toggleUserStatus(user),
+    );
+  }
+}
+
+// ── Card item con hover effect para desktop ───────────────
+class _UserCardItem extends StatefulWidget {
+  final UserModel user;
+  final String? currentRole;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onToggle;
+
+  const _UserCardItem({
+    required this.user,
+    required this.currentRole,
+    required this.onTap,
+    required this.onEdit,
+    required this.onToggle,
+  });
+
+  @override
+  State<_UserCardItem> createState() => _UserCardItemState();
+}
+
+class _UserCardItemState extends State<_UserCardItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.user;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit:  (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: _hovered ? const Color(0xFFF0FDFA) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _hovered
+                  ? const Color(0xFF06B6A4).withOpacity(0.35)
+                  : const Color(0xFFE2E8F0),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(_hovered ? 0.08 : 0.04),
+                blurRadius: _hovered ? 14 : 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
           child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(children: [
-                // Avatar
-                CircleAvatar(
-                    radius: 24,
-                    backgroundColor: user.isActive
-                        ? const Color(0xFF06B6A4).withOpacity(0.15)
-                        : Colors.grey.shade200,
-                    child: Icon(
-                        user.isGoogleUser ? Icons.g_mobiledata : Icons.person,
-                        color: user.isActive ? const Color(0xFF06B6A4) : Colors.grey,
-                        size: 22)),
-                const SizedBox(width: 12),
+            padding: const EdgeInsets.all(16),
+            child: Row(children: [
+              // Avatar
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: user.isActive
+                    ? const Color(0xFF06B6A4).withOpacity(0.12)
+                    : Colors.grey.shade200,
+                child: Icon(
+                    user.isGoogleUser ? Icons.g_mobiledata : Icons.person,
+                    color: user.isActive ? const Color(0xFF06B6A4) : Colors.grey,
+                    size: 22),
+              ),
+              const SizedBox(width: 14),
 
-                // Info
-                Expanded(child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(user.displayName,
+              // Info principal
+              Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.displayName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, fontSize: 15,
+                            color: Color(0xFF111827))),
+                    const SizedBox(height: 3),
+                    Text(user.email,
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 7),
+                    Row(children: [
+                      // Badge estado
+                      Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                              color: user.isActive
+                                  ? Colors.green.withOpacity(0.1)
+                                  : Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10)),
+                          child: Text(
+                              user.isActive ? 'Activo' : 'Inactivo',
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w600,
+                                  color: user.isActive
+                                      ? const Color(0xFF059669)
+                                      : Colors.red))),
+                      const SizedBox(width: 8),
+                      Text('${user.scansCount} escaneos',
                           style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 14)),
-                      const SizedBox(height: 2),
-                      Text(user.email,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                      const SizedBox(height: 4),
-                      Row(children: [
-                        // Badge estado
-                        Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: user.isActive
-                                    ? Colors.green.withOpacity(0.1)
-                                    : Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(10)),
-                            child: Text(
-                                user.isActive ? 'Activo' : 'Inactivo',
-                                style: TextStyle(
-                                    fontSize: 11, fontWeight: FontWeight.w600,
-                                    color: user.isActive ? Colors.green : Colors.red))),
+                              fontSize: 11, color: Color(0xFF9CA3AF))),
+                      if (user.isGoogleUser) ...[
                         const SizedBox(width: 8),
-                        // Escaneos
-                        Text('${user.scansCount} escaneos',
-                            style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                        const SizedBox(width: 8),
-                        // Método de login
-                        if (user.isGoogleUser)
-                          Text('🔐 Google',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                      ]),
-                    ])),
-
-                // Menú de acciones
-                PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.grey),
-                    onSelected: (value) {
-                      switch (value) {
-                      // ← Activado: navega a UserDetailPage
-                        case 'detail':
-                          Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => UserDetailPage(userId: user.id)));
-                          break;
-                      // ← Implementado: abre diálogo de edición
-                        case 'edit':
-                          if (_currentRole == 'admin_general') _editUser(user);
-                          break;
-                        case 'toggle':
-                          _toggleUserStatus(user);
-                          break;
-                      }
-                    },
-                    itemBuilder: (ctx) => [
-                      // Ver detalle — siempre visible
-                      const PopupMenuItem(
-                          value: 'detail',
-                          child: Row(children: [
-                            Icon(Icons.info_outline, size: 20),
-                            SizedBox(width: 8),
-                            Text('Ver detalle'),
-                          ])),
-
-                      // Editar — solo admin_general
-                      if (_currentRole == 'admin_general')
-                        const PopupMenuItem(
-                            value: 'edit',
-                            child: Row(children: [
-                              Icon(Icons.edit, size: 20),
-                              SizedBox(width: 8),
-                              Text('Editar'),
-                            ])),
-
-                      // ← 'change-role' ELIMINADO — turistas no cambian de rol
-
-                      // Desactivar / Activar
-                      PopupMenuItem(
-                          value: 'toggle',
-                          child: Row(children: [
-                            Icon(
-                                user.isActive ? Icons.block : Icons.check_circle,
-                                size: 20,
-                                color: user.isActive ? Colors.red : Colors.green),
-                            const SizedBox(width: 8),
-                            Text(user.isActive ? 'Desactivar' : 'Activar'),
-                          ])),
+                        const Text('Google',
+                            style: TextStyle(
+                                fontSize: 11, color: Color(0xFF9CA3AF))),
+                      ],
                     ]),
-              ])),
-        ));
+                  ])),
+
+              // Menú de acciones
+              PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: Colors.grey),
+                  onSelected: (value) {
+                    switch (value) {
+                    // ← Activado: navega a UserDetailPage
+                      case 'detail': widget.onTap(); break;
+                    // ← Implementado: abre diálogo de edición
+                      case 'edit':   widget.onEdit(); break;
+                      case 'toggle': widget.onToggle(); break;
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    // Ver detalle — siempre visible
+                    const PopupMenuItem(
+                        value: 'detail',
+                        child: Row(children: [
+                          Icon(Icons.info_outline, size: 20),
+                          SizedBox(width: 8),
+                          Text('Ver detalle'),
+                        ])),
+
+                    // Editar — solo admin_general
+                    if (widget.currentRole == 'admin_general')
+                      const PopupMenuItem(
+                          value: 'edit',
+                          child: Row(children: [
+                            Icon(Icons.edit, size: 20),
+                            SizedBox(width: 8),
+                            Text('Editar'),
+                          ])),
+
+                    // ← 'change-role' ELIMINADO — turistas no cambian de rol
+
+                    // Desactivar / Activar
+                    PopupMenuItem(
+                        value: 'toggle',
+                        child: Row(children: [
+                          Icon(
+                              user.isActive ? Icons.block : Icons.check_circle,
+                              size: 20,
+                              color: user.isActive ? Colors.red : Colors.green),
+                          const SizedBox(width: 8),
+                          Text(user.isActive ? 'Desactivar' : 'Activar'),
+                        ])),
+                  ]),
+            ]),
+          ),
+        ),
+      ),
+    );
   }
 }

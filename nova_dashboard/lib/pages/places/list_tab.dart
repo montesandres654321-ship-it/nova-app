@@ -420,16 +420,16 @@ class _PlacesListTabState extends State<PlacesListTab> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: typeColor.withOpacity(0.07),
+                              color: typeColor.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color: typeColor.withOpacity(0.18)),
+                                  color: typeColor.withOpacity(0.28)),
                             ),
                             child: Text(place.tipoLabel,
                                 style: TextStyle(
                                     fontSize: 11,
                                     color: typeColor,
-                                    fontWeight: FontWeight.w600)),
+                                    fontWeight: FontWeight.w700)),
                           ),
                           const SizedBox(width: 8),
                           const Icon(Icons.location_on_outlined,
@@ -611,15 +611,15 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = isActive ? _kGreen : _kTextSub;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withOpacity(0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.25)),
+        border: Border.all(color: color.withOpacity(0.35)),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Container(
-          width: 5, height: 5,
+          width: 6, height: 6,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 5),
@@ -628,7 +628,7 @@ class _StatusBadge extends StatelessWidget {
           style: TextStyle(
               fontSize: 10,
               color: color,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.w700,
               letterSpacing: 0.2),
         ),
       ]),

@@ -20,8 +20,6 @@ import '../../widgets/charts/donut_chart_widget.dart';
 import '../../widgets/charts/bar_chart_widget.dart';
 import 'reward_dialog.dart';
 import 'place_edit_page.dart';
-import '../../utils/app_theme.dart';
-import '../../widgets/common/stat_card.dart';
 
 class OwnerDashboardPage extends StatefulWidget {
   final String userName;
@@ -139,7 +137,7 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0FDFA),
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: _teal, foregroundColor: Colors.white,
         title: Row(children: [
@@ -160,26 +158,26 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
       body: _loading ? const Center(child: CircularProgressIndicator(color: _teal))
           : _error.isNotEmpty ? _buildError()
           : _place == null ? const Center(child: Text('No se pudo cargar el lugar.'))
-          : Padding(padding: const EdgeInsets.all(12), child: Column(children: [
+          : Padding(padding: const EdgeInsets.all(16), child: Column(children: [
         _buildStatsRow(),
-        const SizedBox(height: 10),
+        const SizedBox(height: 16),
         Expanded(child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          // Columna izquierda: gráficas
-          Expanded(flex: 3, child: Column(children: [
+          // Columna izquierda (70%): gráficas
+          Expanded(flex: 7, child: Column(children: [
             Expanded(child: _lineChart()),
-            const SizedBox(height: 10),
+            const SizedBox(height: 16),
             Expanded(child: _barChart()),
           ])),
-          const SizedBox(width: 10),
-          // Columna derecha: donut + recompensa/QR + pendientes
-          Expanded(flex: 2, child: Column(children: [
-            SizedBox(height: 140, child: _donutChart()),
-            const SizedBox(height: 8),
+          const SizedBox(width: 16),
+          // Columna derecha (30%): donut + recompensa/QR + pendientes
+          Expanded(flex: 3, child: Column(children: [
+            SizedBox(height: 148, child: _donutChart()),
+            const SizedBox(height: 12),
             IntrinsicHeight(child: Row(children: [
-              if (_place!.hasReward) ...[Expanded(child: _rewardMini()), const SizedBox(width: 8)],
+              if (_place!.hasReward) ...[Expanded(child: _rewardMini()), const SizedBox(width: 10)],
               _qrMini(),
             ])),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             // Recompensas pendientes
             Expanded(child: _pendingRewardsSection()),
           ])),
@@ -191,16 +189,19 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   // ── Recompensas pendientes ──────────────────────────
   Widget _pendingRewardsSection() {
     return Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _amber.withOpacity(0.2)),
-          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.06), blurRadius: 6)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+        Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
           child: Row(children: [
-            Container(width: 3, height: 14, decoration: BoxDecoration(color: _amber, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(width: 6),
+            Container(width: 3, height: 13, decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(width: 7),
             Text('Pendientes (${_pendingRewards.length})',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
           ]),
         ),
         Expanded(child: _pendingRewards.isEmpty
@@ -249,25 +250,57 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
   }
 
   Widget _buildStatsRow() => Row(children: [
-    Expanded(child: StatCard(title: 'Visitantes', value: _visitors.toString(),
-        icon: Icons.people_rounded, color: _teal)),
-    const SizedBox(width: 8),
-    Expanded(child: StatCard(title: 'Escaneos', value: _scans.toString(),
-        icon: Icons.qr_code_scanner_rounded, color: _teal2)),
-    const SizedBox(width: 8),
-    Expanded(child: StatCard(title: 'Otorgadas', value: _rewards.toString(),
-        icon: Icons.card_giftcard_rounded, color: _amber)),
-    const SizedBox(width: 8),
-    Expanded(child: StatCard(title: 'Canjeadas', value: _redeemed.toString(),
-        icon: Icons.check_circle_rounded, color: _green)),
+    Expanded(child: _ownerStatCard(Icons.people_rounded, _visitors.toString(), 'Visitantes', _teal)),
+    const SizedBox(width: 12),
+    Expanded(child: _ownerStatCard(Icons.qr_code_scanner_rounded, _scans.toString(), 'Escaneos', _teal2)),
+    const SizedBox(width: 12),
+    Expanded(child: _ownerStatCard(Icons.card_giftcard_rounded, _rewards.toString(), 'Otorgadas', _amber)),
+    const SizedBox(width: 12),
+    Expanded(child: _ownerStatCard(Icons.check_circle_rounded, _redeemed.toString(), 'Canjeadas', _green)),
   ]);
+
+  Widget _ownerStatCard(IconData icon, String value, String label, Color color) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFFE5E7EB)),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+    ),
+    child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+      Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color, size: 17),
+      ),
+      const SizedBox(width: 10),
+      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A), height: 1.1)),
+        Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+      ])),
+    ]),
+  );
+
+  Widget _chartCard({required Widget child, EdgeInsets padding = const EdgeInsets.all(16)}) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFFE5E7EB)),
+      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+    ),
+    padding: padding,
+    child: child,
+  );
 
   Widget _lineChart() {
     if (_scansByDay.isEmpty) return _emptyBox(Icons.show_chart, 'Sin actividad');
     final d = _scansByDay.map((i) { String l = i['date']?.toString() ?? '';
     try { l = DateFormat('d MMM', 'es').format(DateTime.parse(l)); } catch (_) {}
     return {'label': l, 'value': i['count'] ?? 0}; }).toList();
-    return LineChartWidget(title: 'Visitas por Día', data: d, color: _teal, height: double.infinity, fillArea: true);
+    return _chartCard(
+      child: LineChartWidget(title: 'Visitas por Día', data: d, color: _teal, height: double.infinity, fillArea: true),
+    );
   }
 
   Widget _barChart() {
@@ -275,72 +308,105 @@ class _OwnerDashboardPageState extends State<OwnerDashboardPage> {
     final d = _scansByDay.map((i) { String l = i['date']?.toString() ?? '';
     try { l = DateFormat('d MMM', 'es').format(DateTime.parse(l)); } catch (_) {}
     return {'label': l, 'value': i['count'] ?? 0}; }).toList();
-    return BarChartWidget(title: 'Escaneos por Día', data: d, color: _teal, height: double.infinity, showValues: true);
+    return _chartCard(
+      child: BarChartWidget(title: 'Escaneos por Día', data: d, color: _teal, height: double.infinity, showValues: true),
+    );
   }
 
   Widget _donutChart() {
     if (_rewards == 0) return _emptyBox(Icons.donut_large, 'Sin recompensas');
-    return DonutChartWidget(title: 'Recompensas', subtitle: '', data: [
-      {'label': 'Canjeadas', 'value': _redeemed, 'color': _green},
-      {'label': 'Pendientes', 'value': _rewards - _redeemed, 'color': _amber},
-    ], height: double.infinity, showLegend: true);
+    return _chartCard(
+      padding: const EdgeInsets.all(12),
+      child: DonutChartWidget(title: 'Recompensas', subtitle: '', data: [
+        {'label': 'Canjeadas', 'value': _redeemed, 'color': _green},
+        {'label': 'Pendientes', 'value': _rewards - _redeemed, 'color': _amber},
+      ], height: double.infinity, showLegend: true),
+    );
   }
 
   Widget _rewardMini() => Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _amber.withOpacity(0.2))),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
         Row(children: [
-          Text(_place?.rewardIcon ?? '🎁', style: const TextStyle(fontSize: 22)),
+          Text(_place?.rewardIcon ?? '🎁', style: const TextStyle(fontSize: 20)),
           const SizedBox(width: 8),
           Expanded(child: Text(_place?.rewardName ?? 'Recompensa',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis)),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                  color: Color(0xFF0F172A)), maxLines: 1, overflow: TextOverflow.ellipsis)),
         ]),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Row(children: [_miniStat('$_rewards', 'dadas', _amber), const SizedBox(width: 6), _miniStat('$_redeemed', 'canje', _green)]),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         InkWell(onTap: () => showDialog(context: context, builder: (_) => OwnerRewardDialog(
             currentIcon: _place?.rewardIcon, currentName: _place?.rewardName,
             currentDescription: _place?.rewardDescription, currentStock: _place?.rewardStock, onSaved: _loadAll)),
             child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(color: _amber.withOpacity(0.08), borderRadius: BorderRadius.circular(6)),
-                child: const Text('Editar', textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: _amber, fontWeight: FontWeight.w600)))),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Text('Editar recompensa', textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w600)))),
       ]));
 
   Widget _miniStat(String v, String l, Color c) => Expanded(child: Container(
       padding: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(color: c.withOpacity(0.06), borderRadius: BorderRadius.circular(6)),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
       child: Column(children: [
-        Text(v, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: c)),
-        Text(l, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        Text(v, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: c, height: 1.1)),
+        Text(l, style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8))),
       ])));
 
-  Widget _qrMini() => Container(width: 110, padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _teal.withOpacity(0.2))),
+  Widget _qrMini() => Container(
+      width: 110,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ClipRRect(borderRadius: BorderRadius.circular(4), child: Image.network(
+        ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.network(
             'https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=PLACE:${_place!.id}&format=png&margin=2',
             width: 70, height: 70, errorBuilder: (_, __, ___) => Container(width: 70, height: 70,
-            color: Colors.grey[100], child: const Icon(Icons.qr_code, size: 28, color: Colors.grey)))),
+            color: const Color(0xFFF1F5F9), child: const Icon(Icons.qr_code, size: 28, color: Color(0xFFCBD5E1))))),
         const SizedBox(height: 6),
-        Text('PLACE:${_place!.id}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w700, color: _teal)),
+        Text('PLACE:${_place!.id}', style: const TextStyle(fontFamily: 'monospace', fontSize: 10,
+            fontWeight: FontWeight.w700, color: Color(0xFF64748B))),
         const SizedBox(height: 6),
         InkWell(onTap: () => showDialog(context: context, builder: (_) => QRDialog(place: _place!)),
             child: Container(width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 6),
-                decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(6)),
-                child: const Text('Descargar', textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)))),
+                decoration: BoxDecoration(
+                  color: _teal.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(color: _teal.withOpacity(0.25)),
+                ),
+                child: const Text('Ver QR', textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: _teal, fontWeight: FontWeight.w600)))),
       ]));
 
   Widget _emptyBox(IconData icon, String msg) => Container(
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10),
-          boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.06), blurRadius: 6)]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
       child: Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(icon, size: 28, color: Colors.grey[300]), const SizedBox(height: 4),
-        Text(msg, style: TextStyle(fontSize: 10, color: Colors.grey[400]))])));
+        Icon(icon, size: 28, color: const Color(0xFFCBD5E1)), const SizedBox(height: 6),
+        Text(msg, style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)))])));
 
   Widget _buildUserMenu() => PopupMenuButton<String>(offset: const Offset(0, 50),
       child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: Row(mainAxisSize: MainAxisSize.min, children: [

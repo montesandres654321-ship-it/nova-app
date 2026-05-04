@@ -11,7 +11,10 @@ class ScansPage extends StatefulWidget {
 }
 
 class _ScansPageState extends State<ScansPage> {
-  static const _teal = Color(0xFF06B6A4);
+  static const _teal  = Color(0xFF06B6A4);
+  static const _kBlue  = Color(0xFF3B82F6);
+  static const _kGreen = Color(0xFF10B981);
+  static const _kAmber = Color(0xFFF59E0B);
   bool _loading = true; String _error = '';
   int _totalScans = 0, _todayScans = 0; double _avgScans = 0;
   List<Map<String, dynamic>> _scansByDay = [], _topPlaces = [];
@@ -66,9 +69,9 @@ class _ScansPageState extends State<ScansPage> {
 
   Widget _buildStatsCards(bool isWide) {
     final cards = [
-      _statCard('Total Escaneos', _totalScans.toString(), Icons.qr_code_scanner, Colors.blue),
-      _statCard('Hoy', _todayScans.toString(), Icons.today, Colors.green),
-      _statCard('Promedio/Día', _avgScans.toStringAsFixed(1), Icons.analytics, Colors.orange),
+      _statCard('Total Escaneos', _totalScans.toString(), Icons.qr_code_scanner, _kBlue),
+      _statCard('Hoy', _todayScans.toString(), Icons.today, _kGreen),
+      _statCard('Promedio/Día', _avgScans.toStringAsFixed(1), Icons.analytics, _kAmber),
     ];
     if (isWide) {
       return Row(children: [
@@ -84,20 +87,61 @@ class _ScansPageState extends State<ScansPage> {
   }
 
   Widget _statCard(String title, String value, IconData icon, Color color) => Container(
-      padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-      boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2))]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2)),
+        ],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: color, size: 28), const SizedBox(height: 10),
-        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
-        const SizedBox(height: 4),
-        Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+        // Franja de color superior (único acento de color)
+        Container(height: 3, decoration: BoxDecoration(
+          color: color,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+        )),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A), height: 1.1)),
+              const SizedBox(height: 2),
+              Text(title, style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+            ]),
+          ]),
+        ),
       ]));
 
   Widget _buildTopPlacesCard() => Container(
-      padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12),
-      boxShadow: [BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 4, offset: const Offset(0, 2))]),
+      padding: const EdgeInsets.all(20), decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 3)),
+        ],
+      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Top 5 Lugares Más Escaneados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        Row(children: [
+          Container(
+            width: 4, height: 18,
+            decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(2)),
+          ),
+          const SizedBox(width: 10),
+          const Text('Top 5 Lugares Más Escaneados',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF0F172A))),
+        ]),
         const SizedBox(height: 16),
         ...(_topPlaces.take(5).map((place) {
           final scans = (place['scans'] as num?)?.toInt() ?? 0;
@@ -114,8 +158,9 @@ class _ScansPageState extends State<ScansPage> {
               Text(tipo.toUpperCase(), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
             ])),
             Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: _teal, borderRadius: BorderRadius.circular(20)),
-                child: Text('$scans esc.', style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600))),
+                decoration: BoxDecoration(color: _teal.withOpacity(0.10), borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: _teal.withOpacity(0.25))),
+                child: Text('$scans esc.', style: const TextStyle(fontSize: 11, color: _teal, fontWeight: FontWeight.w600))),
           ]));
         })),
       ]));
